@@ -1,0 +1,17 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+ENV/
+*.log
+media/
+staticfiles/
+.env
+.env.*
+!.env.example
+.vscode/
+.pytest_cache/
+
