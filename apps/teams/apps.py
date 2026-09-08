@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class TeamsConfig(AppConfig):
-    name = 'Teams'
+    name = 'apps.teams'

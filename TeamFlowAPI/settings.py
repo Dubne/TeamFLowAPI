@@ -44,7 +44,10 @@ DJANGO_APPS = [
     'django.contrib.staticfiles'
 ]
 LOCAL_APPS = [
-    'apps.users'
+    'apps.users',
+    'apps.tasks',
+    'apps.teams',
+    'apps.projects'
 ]
 INSTALLED_APPS = OTHERS_APPS + DJANGO_APPS + LOCAL_APPS
 
