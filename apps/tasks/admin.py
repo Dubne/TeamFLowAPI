@@ -1,5 +1,5 @@
 from django.contrib import admin
-from models import Task, Tag, Comment, Attachment
+from .models import Task, Tag, Comment, Attachment
 
 
 class CommentInline(admin.TabularInline):

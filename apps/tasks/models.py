@@ -24,7 +24,10 @@ class Task(models.Model):
     priority = models.CharField(max_length=50, choices=Priority.choices, default=Priority.LOW)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    tags = models.ManyToManyField("Task", blank=True, related_name="tasks")
     sla_due_at = models.DateTimeField(null=True, blank=True) 
+    def __str__(self):
+        return self.title
 
 class Comment(models.Model):
     class Visibility(models.TextChoices):
@@ -40,11 +43,12 @@ class Comment(models.Model):
 class Tag(models.Model):
     name = models.CharField(max_length=50)
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="tags")
-    tasks = models.ManyToManyField(Task, blank=True, related_name="tags")
     class Meta:
         constraints =[
             models.UniqueConstraint(fields=["team", "name"], name="unique_tag_per_team")
         ] 
+    def __str__(self):
+        return self.name
 
 class Attachment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="attachments")
