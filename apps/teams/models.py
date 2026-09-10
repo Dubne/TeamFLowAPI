@@ -11,7 +11,7 @@ class Team(models.Model):
 class TeamMembership(models.Model):
 
     class Role(models.TextChoices):
-        OWNER = "OWNER", "Owner"
+        OWNER = "OWNER", "Owner" 
         ADMIN = "ADMIN", "Admin"
         MEMBER = "MEMBER", "Member"
         VIEWER = "VIEWER", "Viewer"

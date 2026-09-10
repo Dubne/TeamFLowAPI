@@ -24,7 +24,7 @@ class Task(models.Model):
     priority = models.CharField(max_length=50, choices=Priority.choices, default=Priority.LOW)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    sla_due_at = models.DateTimeField(null=True, blank=True)
+    sla_due_at = models.DateTimeField(null=True, blank=True) 
 
 class Comment(models.Model):
     class Visibility(models.TextChoices):

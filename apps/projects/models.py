@@ -6,7 +6,7 @@ from django.conf import settings
 class Project(models.Model):
     class Status(models.TextChoices):
         ACTIVE = "ACTIVE", 'Active'
-        ARCHIVED = "ARCHIVED", 'Archived'
+        ARCHIVED = "ARCHIVED", 'Archived' 
     name = models.CharField(max_length=50)
     description = models.CharField(max_length=255)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
