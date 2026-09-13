@@ -8,7 +8,7 @@ class Team(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     def __str__(self):
-        return self.name
+        return self.name 
 
 class TeamMembership(models.Model):
 
