@@ -166,7 +166,6 @@ def upload_attachment(*, task, file, uploaded_by):
     if membership is None:
         raise ValidationError("You are not a member of this team.")
 
-    from .models import Attachment
     return Attachment.objects.create(
         task=task,
         uploaded_by=uploaded_by,
