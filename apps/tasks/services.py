@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.utils import timezone
 from .models import Task
 from ..teams.models import TeamMembership
+from ..projects.models import Project
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
@@ -23,11 +24,8 @@ def create_task(*, title, description="", project, creator, priority):
     if membership is None:
         raise ValidationError("You are not a member of this team.")
 
-    if membership.role not in [
-              TeamMembership.Role.OWNER,
-              TeamMembership.Role.ADMIN
-         ]:
-        raise ValidationError("You do not have permission to create a task")
+    if project.status == Project.Status.ARCHIVED:
+        raise ValidationError("You cannot create a task because this project archived")
     
     return Task.objects.create(
         project=project,
@@ -83,6 +81,11 @@ def change_task_status(*, task, user, status):
             "You are not a member of this team."
         )
 
+    is_assignee = task.assignee_id == user.id
+    is_admin = membership.role in [TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN]
+    if not (is_assignee or is_admin):
+        raise ValidationError("Only the assignee or a team admin can change the status.")
+
     if status not in Task.Status.values:
         raise ValidationError("Invalid task status.")
 
@@ -90,3 +93,4 @@ def change_task_status(*, task, user, status):
     task.save(update_fields=["status"])
 
     return task
+

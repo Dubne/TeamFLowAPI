@@ -21,6 +21,10 @@ def create_team(*, owner, name, description=""):
 def invite_user(*, inviter, invited_user, team):
     expired_at = timezone.now() + timedelta(days=7)
     inviter_membership = TeamMembership.objects.filter(user=inviter, team= team).first()
+
+    if inviter_membership is None:
+            raise ValidationError("Inviter is not a member of this team")
+
     if inviter_membership.role not in [
                   TeamMembership.Role.OWNER,
                   TeamMembership.Role.ADMIN
@@ -73,13 +77,13 @@ def decline_invitation(*, invitation, user):
     if invitation.status != Invitation.Status.PENDING:
             raise ValidationError()
 
+    if invitation.expired_at < timezone.now():
+                invitation.status = Invitation.Status.EXPIRED
+                invitation.save(update_fields=["status"])
+                raise ValidationError("This invitation has expired.")
+    
     invitation.status = Invitation.Status.DECLINED
     invitation.save(update_fields=["status"])
-
-    if invitation.expired_at < timezone.now():
-            invitation.status = Invitation.Status.EXPIRED
-            invitation.save(update_fields=["status"])
-            raise ValidationError("This invitation has expired.")
 
     return invitation
 
