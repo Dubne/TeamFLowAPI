@@ -20,7 +20,14 @@ class IsCommentTeamMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         return TeamMembership.objects.filter(user=request.user, team=obj.task.project.team).exists()
 
+class IsTagTeamMember(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return TeamMembership.objects.filter(user=request.user, team=obj.team).exists()
 
+class IsAttachmentTeamMember(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return TeamMembership.objects.filter(user=request.user, team=obj.task.project.team).exists()
+    
 # def get_team(obj):
 #     team = getattr(obj, "team", None)
 #     if team is None:
