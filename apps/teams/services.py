@@ -18,6 +18,31 @@ def create_team(*, owner, name, description=""):
     ) 
     return team
 
+@transaction.atomic
+def delete_team(*, deleter, team):
+      
+      membership = TeamMembership.objects.filter(user=deleter, team=team).first()
+
+      if membership is None:
+              raise ValidationError("You are not a member of this team.")
+      
+      if membership.role != TeamMembership.Role.OWNER:
+              raise ValidationError("Only the team owner can delete team.")
+      
+      team.delete()
+
+def update_team(*, team, user, title=None, description=None):
+    if team.creator != user:
+        raise ValidationError("Only the creator can edit this team.")
+
+    if title is not None:
+        team.title = title
+    if description is not None:
+        team.description = description
+
+    team.save()
+    return team
+
 def invite_user(*, inviter, invited_user, team):
     expired_at = timezone.now() + timedelta(days=7)
     inviter_membership = TeamMembership.objects.filter(user=inviter, team= team).first()
@@ -176,3 +201,7 @@ def transfer_team_ownership(*, team, current_owner, new_owner):
     team.save(update_fields=["owner"])
 
     return team
+
+
+      
+

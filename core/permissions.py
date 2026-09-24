@@ -34,11 +34,6 @@ class IsAttachmentTeamMember(BasePermission):
 #         return obj
 #     return team
 
-# class IsTeamMember(BasePermission):
-#     def has_object_permission(self, request, view, obj):
-#         team = get_team(obj)
-#         return TeamMembership.objects.filter(user=request.user, team=team).exists()
-
 # class IsTeamOwner(BasePermission):
 #     def has_object_permission(self, request, view, obj):
 #         return TeamMembership.objects.filter(user=request.user, team=obj, role="OWNER").exists()

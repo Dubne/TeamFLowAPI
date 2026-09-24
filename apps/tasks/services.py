@@ -36,6 +36,31 @@ def create_task(*, title, description="", project, creator, priority):
         sla_due_at=sla_due_at
     )
 
+def delete_task(*, task, user):
+    is_creator = task.creator == user
+    membership = TeamMembership.objects.filter(team=task.project.team, user=user).first()
+    is_admin = membership is not None and membership.role in [
+        TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN
+    ]
+    if not (is_creator or is_admin):
+        raise ValidationError("Only the creator or a team admin can delete this task.")
+    task.delete()
+
+def update_task(*, task, user, title=None, description=None, priority=None):
+    if task.creator != user:
+        raise ValidationError("Only the creator can edit this task.")
+
+    if title is not None:
+        task.title = title
+    if description is not None:
+        task.description = description
+    if priority is not None:
+        task.priority = priority
+        task.sla_due_at = timezone.now() + SLA_BY_PRIORITY[priority]
+
+    task.save()
+    return task
+
 @transaction.atomic
 def assign_task(*, task, assigner, assignee):
     assigner_membership = TeamMembership.objects.filter(
@@ -159,6 +184,25 @@ def remove_tag_from_task(*, task, tag, user):
     task.tags.remove(tag)
     return task
 
+def delete_tag(*, tag, team,deleter):
+    membership = TeamMembership.objects.filter(
+        user=deleter,
+        team=team
+    ).first()
+
+    if membership is None:
+        raise ValidationError("You are not a member of the team.")
+
+    if membership.role not in (
+        TeamMembership.Role.OWNER,
+        TeamMembership.Role.ADMIN,
+    ):
+        raise ValidationError(
+            "You do not have permission to delete tag."
+        )
+
+    tag.delete()
+
 def upload_attachment(*, task, file, uploaded_by):
     membership = TeamMembership.objects.filter(
         team=task.project.team, user=uploaded_by
@@ -192,4 +236,4 @@ def delete_attachment(*, attachment, user):
         raise ValidationError("You do not have permission to delete this attachment.")
 
     attachment.file.delete(save=False)
-    attachment.delete()
+    attachment.delete() 
