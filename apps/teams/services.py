@@ -38,7 +38,7 @@ def update_team(*, team, user, title=None, description=None):
     if title is not None:
         team.title = title
     if description is not None:
-        team.description = description
+        team.description = description 
 
     team.save()
     return team

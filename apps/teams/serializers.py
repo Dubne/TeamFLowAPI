@@ -13,7 +13,7 @@ class TeamSerializer(serializers.ModelSerializer):
         read_only_fields = ["owner", "created_at", "updated_at"]
 
 class TeamShortSerializer(serializers.ModelSerializer):
-    class Meta:
+    class Meta: 
         model = Team
         fields = ["id", "name"]
         
@@ -30,6 +30,9 @@ class TeamMembershipSerializer(serializers.ModelSerializer):
 
 class TeamMembershipRoleUpdateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=TeamMembership.Role.choices)
+
+class TransferOwnershipSerializer(serializers.Serializer):
+    new_owner = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
 class InvitationSerializer(serializers.ModelSerializer):
     invited_by = UserShortSerializer(read_only=True)

@@ -9,5 +9,5 @@ def get_user_teams(*, user):
 def get_user_incoming_invitations(*, user):
     return Invitation.objects.filter(invited_user=user, status=Invitation.Status.PENDING)
 
-def get_team_invitations(*, team):
+def get_team_invitations(*, team): 
     return Invitation.objects.filter(team=team)
