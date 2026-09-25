@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from core.permissions import IsTeamMember
-from .models import Team
+from .models import Team 
 from .serializers import TeamSerializer, TeamCreateUpdateSerializer, InvitationSerializer, \
       TeamMembershipRoleUpdateSerializer, TeamMembershipSerializer, InvitationCreateSerializer, TransferOwnershipSerializer
 from .selectors import get_user_teams, get_team_invitations, get_team_members, get_user_incoming_invitations

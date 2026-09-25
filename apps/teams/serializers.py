@@ -30,7 +30,7 @@ class TeamMembershipSerializer(serializers.ModelSerializer):
 
 class TeamMembershipRoleUpdateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=TeamMembership.Role.choices)
-
+ 
 class TransferOwnershipSerializer(serializers.Serializer):
     new_owner = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 

@@ -21,6 +21,11 @@ class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
         model = Project
         fields = ["name", "description", "team", "status"]
 
+class ChangeStatusSerializer(serializers.Serializer):
+    class Meta:
+        model = Project
+        fields = ["status"]
+
 class ProjectShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
