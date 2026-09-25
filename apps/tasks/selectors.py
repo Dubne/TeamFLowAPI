@@ -7,7 +7,7 @@ def get_user_visible_tasks(*, user):
 def get_project_tasks(*, project):
     return Task.objects.filter(project=project).select_related("creator", "assignee").prefetch_related("tags")
 
-def get_task_comments(*, task):
+def get_task_comments(*, task): 
     return Comment.objects.filter(task=task).select_related("user")
 
 def get_task_attachments(*, task):

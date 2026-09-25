@@ -4,7 +4,7 @@ from ..users.serializers import UserShortSerializer
 from ..projects.serializers import ProjectShortSerializer
 from ..projects.models import Project
 from django.contrib.auth import get_user_model
-
+import os
 User = get_user_model() 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -38,7 +38,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         fields = ["title", "description", "project", "priority"]
 
 class TaskUpdatedSerializer(serializers.ModelSerializer):
-    class Meta:
+    class Meta: 
         model = Task
         fields = ["title", "description", "priority"]
 
@@ -58,3 +58,32 @@ class CommentCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["text"]
+
+
+ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".pdf", ".log", ".txt"]
+MAX_SIZE_MB = 10
+
+
+class AttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by = UserShortSerializer(read_only=True)
+
+    class Meta:
+        model = Attachment
+        fields = ["id", "file", "filename", "size", "content_type", "uploaded_by", "created_at"]
+        read_only_fields = fields
+
+
+class AttachmentUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Attachment
+        fields = ["file"]
+
+    def validate_file(self, value):
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise serializers.ValidationError(
+                f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+            )
+        if value.size > MAX_SIZE_MB * 1024 * 1024:
+            raise serializers.ValidationError(f"File is too big (max {MAX_SIZE_MB} MB).")
+        return value

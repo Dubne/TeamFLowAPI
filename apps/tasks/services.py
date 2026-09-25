@@ -61,7 +61,7 @@ def update_task(*, task, user, title=None, description=None, priority=None):
     task.save()
     return task
 
-@transaction.atomic
+@transaction.atomic 
 def assign_task(*, task, assigner, assignee):
     assigner_membership = TeamMembership.objects.filter(
         team=task.project.team,
