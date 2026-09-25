@@ -4,15 +4,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
-from apps.teams.models import TeamMembership
+from apps.teams.models import TeamMembership, Team
 from ..projects.models import Project
 from core.permissions import IsTaskTeamMember, IsCommentTeamMember, IsTagTeamMember, IsAttachmentTeamMember
 from .models import Task, Comment, Tag, Attachment
 from .serializers import TaskAssignSerializer, TaskChangeStatusSerializer, TaskCreateSerializer, \
                                 TaskDetailSerializer, TaskListSerializer, TaskUpdatedSerializer, CommentCreateUpdateSerializer, CommentSerializer, \
-                                AttachmentSerializer, AttachmentUploadSerializer
+                                AttachmentSerializer, AttachmentUploadSerializer, TagSerializer
                                 
-from .services import create_task, assign_task, delete_task, change_task_status, update_task, create_comment, update_comment, delete_comment
+from .services import create_task, assign_task, delete_task, change_task_status, update_task, create_comment, \
+                update_comment, delete_comment, delete_tag, delete_attachment, add_tag_to_task, create_tag, remove_tag_from_task
 from .selectors import get_project_tasks, get_user_visible_tasks, get_task_attachments, get_task_comments, get_team_tags
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -147,4 +148,54 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         attachment = self.get_object()
         delete_attachment(attachment=attachment, user=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
-        
+
+class TagViewSet(viewsets.ModelViewSet):
+    serializer_class = TagSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if "team_pk" in self.kwargs:
+            team = get_object_or_404(Team, pk=self.kwargs["team_pk"])
+            return get_team_tags(team=team)
+        return Tag.objects.all()
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsTagTeamMember()]
+
+    def create(self, request, *args, **kwargs):
+        team = get_object_or_404(Team, pk=self.kwargs["team_pk"])
+        if not TeamMembership.objects.filter(user=request.user, team=team).exists():
+            self.permission_denied(request, message="You are not a member of this team.")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        tag = create_tag(team=team, creator=request.user, **serializer.validated_data)
+        return Response(TagSerializer(tag).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        tag = self.get_object()
+        delete_tag(tag=tag, team=tag.team, deleter=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class TaskTagViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated, IsTaskTeamMember]
+
+    def list(self, request, task_pk=None):
+        task = get_object_or_404(Task, pk=task_pk)
+        self.check_object_permissions(request, task)
+        return Response(TagSerializer(task.tags.all(), many=True).data)
+
+    def create(self, request, task_pk=None):
+        task = get_object_or_404(Task, pk=task_pk)
+        self.check_object_permissions(request, task)
+        tag = get_object_or_404(Tag, pk=request.data.get("tag_id"))
+        add_tag_to_task(task=task, tag=tag, user=request.user)
+        return Response(TagSerializer(task.tags.all(), many=True).data)
+
+    def destroy(self, request, task_pk=None, pk=None):
+        task = get_object_or_404(Task, pk=task_pk)
+        self.check_object_permissions(request, task)
+        tag = get_object_or_404(Tag, pk=pk)
+        remove_tag_from_task(task=task, tag=tag, user=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
