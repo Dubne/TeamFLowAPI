@@ -8,7 +8,7 @@ from .models import Project
 from .serializers import ProjectSerializer, ProjectCreateUpdateSerializer, ChangeStatusSerializer
 from .services import create_project, update_project, delete_project, change_project_status
 from .selectors import get_project_statistic, get_user_visible_projects
-
+ 
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
 

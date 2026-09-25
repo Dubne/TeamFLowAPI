@@ -22,10 +22,7 @@ class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
         fields = ["name", "description", "team", "status"]
 
 class ChangeStatusSerializer(serializers.Serializer):
-    class Meta:
-        model = Project
-        fields = ["status"]
-
+    status = serializers.ChoiceField(choices=Project.Status.choices)
 class ProjectShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project

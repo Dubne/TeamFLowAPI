@@ -5,7 +5,7 @@ from ..projects.serializers import ProjectShortSerializer
 from ..projects.models import Project
 from django.contrib.auth import get_user_model
 
-User = get_user_model()
+User = get_user_model() 
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
