@@ -52,3 +52,4 @@ class TeamViewSet(viewsets.ModelViewSet):
         serializer = TransferOwnershipSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         updated_team = update_team(team=team, current_owner=request.user, new_owner=serializer.validated_data["new_owner"])
+        return Response(TeamSerializer(updated_team).data)
