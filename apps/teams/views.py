@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 
 from core.permissions import IsTeamMember
-from .models import Team 
+from .models import Team, Invitation, TeamMembership
 from .serializers import TeamSerializer, TeamCreateUpdateSerializer, InvitationSerializer, \
       TeamMembershipRoleUpdateSerializer, TeamMembershipSerializer, InvitationCreateSerializer, TransferOwnershipSerializer
 from .selectors import get_user_teams, get_team_invitations, get_team_members, get_user_incoming_invitations
@@ -81,4 +81,32 @@ class TeamMembershipViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
         updated = change_member_role(member=member, changer=request.user, team=team, role=serializer.validated_data["role"])
         
-        
+
+class InvitationViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, team_pk=None):
+        if team_pk is not None:
+            team = get_object_or_404(Team, pk=team_pk)
+            invitations = get_team_invitations(team=team)
+        else:
+            invitations = get_user_incoming_invitations(user=request.user)
+
+        return Response(InvitationSerializer(invitations,many=True).data)
+
+    def create(self, request, team_pk=None):
+        team = get_object_or_404(Team, pk=team_pk)
+        serializer = InvitationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invitation = invite_user(inviter=request.user, invited_user=serializer.validated_data["invited_user"], team=team)
+        return Response(InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
+
+    def accept(self, request, pk=None):
+        invitation = get_object_or_404(Invitation, pk=pk)
+        membership = accept_invitation(invitation=invitation, user=request.user,)
+        return Response({"detail": "Invitation accepted.","membership_id": membership.id,},status=status.HTTP_200_OK,)
+
+    def decline(self, request, pk=None):
+        invitation = get_object_or_404(Invitation, pk=pk)
+        invitation = decline_invitation(invitation=invitation, user=request.user)
+        return Response(InvitationSerializer(invitation).data)
