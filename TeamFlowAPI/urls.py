@@ -1,9 +1,10 @@
 from rest_framework.routers import DefaultRouter
 from django.contrib import admin
 from django.urls import path, include
-from apps.teams.views import TeamViewSet
+from apps.teams.views import TeamViewSet, TeamMembershipViewSet
 from apps.projects.views import ProjectViewSet
 from apps.tasks.views import TaskViewSet, CommentViewSet, AttachmentViewSet, TagViewSet, TaskTagViewSet
+
 router = DefaultRouter()
 router.register("teams", TeamViewSet, basename="team" )
 router.register("projects", ProjectViewSet, basename="project")
@@ -37,6 +38,9 @@ tag_detail = TagViewSet.as_view({"get": "retrieve", "delete": "destroy"})
 task_tag_list = TaskTagViewSet.as_view({"get": "list", "post": "create"})
 task_tag_detail = TaskTagViewSet.as_view({"delete": "destroy"})
 
+team_membership_list = TeamMembershipViewSet.as_view({"get": "list"})
+team_membership_detail = TeamMembershipViewSet.as_view({"delete": "destroy"})
+team_membership_change_role = TeamMembershipViewSet.as_view({"patch": "change_role"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -49,4 +53,7 @@ urlpatterns = [
     path("tags/<int:pk>/", tag_detail),
     path("tasks/<int:task_pk>/tags/", task_tag_list),
     path("tasks/<int:task_pk>/tags/<int:pk>/", task_tag_detail),
+    path("teams/<int:team_pk>/members/", team_membership_list)
+    path("teams/<int:team_pk>/members/<int:pk>/", team_membership_detail)
+    path("teams/<int:team_pk>/members/<int:pk>/change-role/")
 ] 

@@ -180,7 +180,7 @@ class TagViewSet(viewsets.ModelViewSet):
 
 class TaskTagViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, IsTaskTeamMember]
-
+ 
     def list(self, request, task_pk=None):
         task = get_object_or_404(Task, pk=task_pk)
         self.check_object_permissions(request, task)
