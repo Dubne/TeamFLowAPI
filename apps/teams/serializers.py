@@ -20,7 +20,7 @@ class TeamShortSerializer(serializers.ModelSerializer):
 class TeamCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
-        fields = ["name", "description"]
+        fields = ["title", "description"]
 
 class TeamMembershipSerializer(serializers.ModelSerializer):
     user = UserShortSerializer(read_only=True)

@@ -158,8 +158,7 @@ def create_tag(*, team, creator, name):
         raise ValidationError("This tag already exists in the team.")
 
     return Tag.objects.create(team=team, name=name)
-
-
+ 
 def add_tag_to_task(*, task, tag, user):
     membership = TeamMembership.objects.filter(
         team=task.project.team, user=user

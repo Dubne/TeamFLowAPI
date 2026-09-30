@@ -33,7 +33,8 @@ ALLOWED_HOSTS = []
 
 
 OTHERS_APPS = [
-    'rest_framework'
+    'rest_framework',
+    'django_filters'
 ]
 DJANGO_APPS = [
     'django.contrib.admin',

@@ -59,22 +59,26 @@ invitation_decline = InvitationViewSet.as_view({
     "patch": "decline",
 })
 
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("api/", include(router.urls)),
+api_urlpatterns = [
+    path("", include(router.urls)),
     path("tasks/<int:task_pk>/comments/", comment_list, name="task-comments-list"),
     path("comments/<int:pk>/", comment_detail, name="comment-detail"),
     path("tasks/<int:task_pk>/attachments/", attachment_list, name="task-attachments-list"),
     path("attachments/<int:pk>/", attachment_detail, name="attachment-detail"),
-    path("teams/<int:pk>/tags/", tag_list, name="team-tags-list"),
+    path("teams/<int:team_pk>/tags/", tag_list, name="team-tags-list"),
     path("tags/<int:pk>/", tag_detail),
     path("tasks/<int:task_pk>/tags/", task_tag_list),
     path("tasks/<int:task_pk>/tags/<int:pk>/", task_tag_detail),
     path("teams/<int:team_pk>/members/", team_membership_list),
     path("teams/<int:team_pk>/members/<int:pk>/", team_membership_detail),
-    path("teams/<int:team_pk>/members/<int:pk>/change-role/"),
-    path("teams/<int:team_pk>/invitations/", InvitationViewSet.as_view({"get": "list", "post": "create"})),
-    path("invitations/", InvitationViewSet.as_view({"get": "list"})),
-    path("invitations/<int:pk>/accept/", InvitationViewSet.as_view({"patch": "accept"})),
-    path("invitations/<int:pk>/decline/", InvitationViewSet.as_view({"patch": "decline"}))
-] 
+    path("teams/<int:team_pk>/members/<int:pk>/change-role/", team_membership_change_role),
+    path("teams/<int:team_pk>/invitations/", invitation_team_list),
+    path("invitations/", invitation_list),
+    path("invitations/<int:pk>/accept/", invitation_accept),
+    path("invitations/<int:pk>/decline/", invitation_decline),
+]
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("api/", include(api_urlpatterns)),
+]
