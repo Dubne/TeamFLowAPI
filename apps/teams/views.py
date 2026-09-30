@@ -18,8 +18,6 @@ User = get_user_model()
 
 
 class TeamViewSet(viewsets.ModelViewSet): 
-    serializer_class = TeamSerializer
-
     def get_permissions(self):
         if self.action == "create":
             return [IsAuthenticated()]

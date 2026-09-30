@@ -3,6 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+
 from core.permissions import IsProjectTeamMember
 from .models import Project
 from .serializers import ProjectSerializer, ProjectCreateUpdateSerializer, ChangeStatusSerializer
@@ -10,6 +13,9 @@ from .services import create_project, update_project, delete_project, change_pro
 from .selectors import get_project_statistic, get_user_visible_projects
  
 class ProjectViewSet(viewsets.ModelViewSet):
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["name", "description"]
+    ordering_fields = ["created_at", "name"]
     serializer_class = ProjectSerializer
 
     def get_permissions(self):
