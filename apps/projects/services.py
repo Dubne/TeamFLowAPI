@@ -75,7 +75,7 @@ def change_project_status(*, project, user, status):
     log_activity(
         actor=user,
         action="project_status_changed",
-        team=project.status,
+        team=project.team,
         project=project,
         task=None,
         metadata={"old_status": old_status, "new_status": status}
@@ -99,7 +99,7 @@ def delete_project(*, deleter, project):
     log_activity(
             actor=deleter,
             action="project_deleted",
-            team=project.status,
+            team=project.team,
             project=project,
             task=None,
             metadata={}
