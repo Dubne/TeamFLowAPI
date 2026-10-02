@@ -49,6 +49,7 @@ LOCAL_APPS = [
     'apps.tasks',
     'apps.teams',
     'apps.projects',
+    'apps.activity',
     'core'
 ]
 INSTALLED_APPS = OTHERS_APPS + DJANGO_APPS + LOCAL_APPS
