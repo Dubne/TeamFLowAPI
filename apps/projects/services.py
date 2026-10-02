@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from apps.activity.services import log_activity
 
-def create_project(*, creator, name, description="", team):
+def create_project(*, creator, name=None, description="", team):
      
      membership = TeamMembership.objects.filter(user=creator, team=team).first()
 
@@ -34,12 +34,12 @@ def create_project(*, creator, name, description="", team):
      
      return project
  
-def update_project(*, project, user, title=None, description=None):
+def update_project(*, project, user, name=None, description=None):
     if project.creator != user:
         raise ValidationError("Only the creator can edit this project.")
 
-    if title is not None:
-        project.title = title
+    if name is not None:
+        project.name = name
     if description is not None:
         project.description = description
 
