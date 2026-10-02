@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from apps.activity.services import log_activity
 
 @transaction.atomic
 def create_team(*, owner, name, description=""):
@@ -16,20 +17,40 @@ def create_team(*, owner, name, description=""):
         team=team,
         role=TeamMembership.Role.OWNER
     ) 
+
+    log_activity(
+        actor=owner,
+        action="team_created",
+        team=team,
+        project=None,
+        task=None,
+        metadata={},
+    )
+
     return team
 
 @transaction.atomic
 def delete_team(*, deleter, team):
       
-      membership = TeamMembership.objects.filter(user=deleter, team=team).first()
+    membership = TeamMembership.objects.filter(user=deleter, team=team).first()
 
-      if membership is None:
-              raise ValidationError("You are not a member of this team.")
+    if membership is None:
+            raise ValidationError("You are not a member of this team.")
       
-      if membership.role != TeamMembership.Role.OWNER:
-              raise ValidationError("Only the team owner can delete team.")
-      
-      team.delete()
+    if membership.role != TeamMembership.Role.OWNER:
+            raise ValidationError("Only the team owner can delete team.")
+
+    log_activity(
+        actor=deleter,
+        action="team_deleted",
+        team=team,
+        project=None,
+        task=None,
+        metadata={},
+    )
+
+    team.delete()
+
 
 def update_team(*, team, user, title=None, description=None):
     if team.creator != user:
@@ -60,7 +81,16 @@ def invite_user(*, inviter, invited_user, team):
     if membership is not None:
             raise ValidationError("User is already a member of this team")
     
-    return Invitation.objects.create(invited_by = inviter, invited_user = invited_user, team=team, expired_at=expired_at)
+    invitation = Invitation.objects.create(invited_by = inviter, invited_user = invited_user, team=team, expired_at=expired_at)
+    log_activity(
+        actor=inviter,
+        action="user_invited",
+        team=team,
+        project=None,
+        task=None,
+        metadata={"invited_user": invited_user.id},
+    )
+    return invitation
 
 @transaction.atomic 
 def accept_invitation(*, invitation, user):
@@ -90,6 +120,15 @@ def accept_invitation(*, invitation, user):
 
     invitation.status = Invitation.Status.ACCEPTED
     invitation.save(update_fields=["status"])
+
+    log_activity(
+        actor=user,
+        action="user_accept_invitation",
+        team=invitation.team,
+        project=None,
+        task=None,
+        metadata={"invitation_id": invitation.id},
+    )
     
     return membership
 
@@ -136,7 +175,15 @@ def remove_member(*, remover, member, team):
           raise ValidationError("You do not have permission to remove members")
      
      membership.delete()
-     return membership
+
+     log_activity(
+        actor=remover,
+        action="remove_member",
+        team=team,
+        project=None,
+        task=None,
+        metadata={"removed_member": member.id},
+    )
      
 def change_member_role(*, member, changer, team, role):
      membership = TeamMembership.objects.filter(
@@ -163,9 +210,19 @@ def change_member_role(*, member, changer, team, role):
         raise ValidationError(
             "The owner role cannot be assigned this way."
         )
-     
+     old_role = membership.role
      membership.role = role
      membership.save(update_fields=["role"])
+
+     log_activity(
+            actor=changer,
+            action="change_member_role",
+            team=team,
+            project=None,
+            task=None,
+            metadata={"member_id": member.id, "member_username": member.username, "old_role": old_role, "new_role": role},
+        )
+
      return membership
            
 @transaction.atomic
@@ -199,6 +256,15 @@ def transfer_team_ownership(*, team, current_owner, new_owner):
 
     team.owner = new_owner
     team.save(update_fields=["owner"])
+
+    log_activity(
+        actor=current_owner,
+        action="change_teamownership",
+        team=team,
+        project=None,
+        task=None,
+        metadata={"previous_owner_id": current_owner.id, "new_owner_id": new_owner.id},
+    )
 
     return team
 

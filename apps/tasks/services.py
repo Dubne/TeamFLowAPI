@@ -40,7 +40,7 @@ def create_task(*, title, description="", project, creator, priority):
     )
     log_activity(
         actor=creator,
-        action="Task created",
+        action="task_created",
         team=project.team,
         project=project,
         task=task,
@@ -56,6 +56,16 @@ def delete_task(*, task, user):
     ]
     if not (is_creator or is_admin):
         raise ValidationError("Only the creator or a team admin can delete this task.")
+
+    log_activity(
+        actor=user,
+        action="task_deleted",
+        team=task.project.team,
+        project=task.project,
+        task=task,
+        metadata={"deleter_id": user.id},
+    )
+    
     task.delete()
 
 def update_task(*, task, user, title=None, description=None, priority=None):
@@ -143,7 +153,7 @@ def change_task_status(*, task, user, status):
     
     log_activity(
         actor=user,
-        action="Task status changed",
+        action="task_status_changed",
         team=task.project.team,
         project=task.project,
         task=task,
@@ -164,7 +174,7 @@ def create_comment(*, task, user, text):
 
     log_activity(
         actor=user,
-        action="Comment created",
+        action="comment_created",
         team=task.project.team,
         project=task.project,
         task=task,
@@ -218,7 +228,7 @@ def add_tag_to_task(*, task, tag, user):
 
     log_activity(
         actor=user,
-        action="Tag to task added",
+        action="tag_to_task_added",
         team=task.project.team,
         project=task.project,
         task=task,
