@@ -5,6 +5,7 @@ from ..teams.models import TeamMembership
 from ..projects.models import Project
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from apps.activity.services import log_activity
 
 SLA_BY_PRIORITY = {
     Task.Priority.LOW: timedelta(days=7),
@@ -26,8 +27,10 @@ def create_task(*, title, description="", project, creator, priority):
 
     if project.status == Project.Status.ARCHIVED:
         raise ValidationError("You cannot create a task because this project archived")
+
+   
     
-    return Task.objects.create(
+    task = Task.objects.create(
         project=project,
         creator=creator,
         title=title,
@@ -35,6 +38,15 @@ def create_task(*, title, description="", project, creator, priority):
         description=description,
         sla_due_at=sla_due_at
     )
+    log_activity(
+        actor=creator,
+        action="Task created",
+        team=project.team,
+        project=project,
+        task=task,
+        metadata={"title": task.title, "priority": task.priority},
+    )
+    return task
 
 def delete_task(*, task, user):
     is_creator = task.creator == user
@@ -92,6 +104,15 @@ def assign_task(*, task, assigner, assignee):
     task.assignee = assignee
     task.save(update_fields=["assignee"])
 
+    log_activity(
+        actor=assigner,
+        action="task_assigned",
+        team=task.project.team,
+        project=task.project,
+        task=task,
+        metadata={"assignee_id": assignee.id},
+    )
+
     return task
 
 @transaction.atomic
@@ -114,8 +135,20 @@ def change_task_status(*, task, user, status):
     if status not in Task.Status.values:
         raise ValidationError("Invalid task status.")
 
+    old_status = task.status
+
     task.status = status
     task.save(update_fields=["status"])
+
+    
+    log_activity(
+        actor=user,
+        action="Task status changed",
+        team=task.project.team,
+        project=task.project,
+        task=task,
+        metadata={"old_status": old_status, "new_status": status},
+    )
 
     return task
 
@@ -123,11 +156,23 @@ def create_comment(*, task, user, text):
     membership = TeamMembership.objects.filter(user=user,team = task.project.team).first()
     if membership is None:
         raise ValidationError("You are not a member of this team")
-    return Comment.objects.create(
+    comment = Comment.objects.create(
         task=task,
         user=user,
         text=text,
     )
+
+    log_activity(
+        actor=user,
+        action="Comment created",
+        team=task.project.team,
+        project=task.project,
+        task=task,
+        metadata={"comment_id": comment.id, "text_preview": comment.text[:100]},
+        )
+
+    return comment
+
 def update_comment(*, comment, user, text):
     if comment.user != user:
         raise ValidationError("You can only edit your own comment.")
@@ -170,6 +215,16 @@ def add_tag_to_task(*, task, tag, user):
         raise ValidationError("This tag belongs to a different team.")
 
     task.tags.add(tag)
+
+    log_activity(
+        actor=user,
+        action="Tag to task added",
+        team=task.project.team,
+        project=task.project,
+        task=task,
+        metadata={"tag_id": tag.id, "tag_name": tag.name},
+    )
+
     return task
 
 
