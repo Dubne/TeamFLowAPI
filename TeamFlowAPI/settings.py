@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 AUTH_USER_MODEL = 'users.User'
-
+from datetime import timedelta
 from pathlib import Path
 import os
 import environ
@@ -34,7 +34,9 @@ ALLOWED_HOSTS = []
 
 OTHERS_APPS = [
     'rest_framework',
-    'django_filters'
+    'django_filters',
+    'djoser',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -55,8 +57,29 @@ LOCAL_APPS = [
 INSTALLED_APPS = OTHERS_APPS + DJANGO_APPS + LOCAL_APPS
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+DJOSER = {
+    "LOGIN_FIELD": "username",
+    "USER_CREATE_PASSWORD_RETYPE": False,
+    "SERIALIZERS": {
+        "user": "apps.users.serializers.UserProfileSerializer",
+        "current_user": "apps.users.serializers.UserProfileSerializer",
+        "user_create": "apps.users.serializers.UserCreateSerializer",
+    },
 }
 
 MIDDLEWARE = [
