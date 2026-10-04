@@ -4,7 +4,8 @@ from django.urls import path, include
 from apps.teams.views import TeamViewSet, TeamMembershipViewSet, InvitationViewSet
 from apps.projects.views import ProjectViewSet
 from apps.tasks.views import TaskViewSet, CommentViewSet, AttachmentViewSet, TagViewSet, TaskTagViewSet
-
+from apps.users.views import LogoutView
+ 
 router = DefaultRouter()
 router.register("teams", TeamViewSet, basename="team" )
 router.register("projects", ProjectViewSet, basename="project")
@@ -61,6 +62,7 @@ invitation_decline = InvitationViewSet.as_view({
 
 api_urlpatterns = [
     path("", include(router.urls)),
+    path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("tasks/<int:task_pk>/comments/", comment_list, name="task-comments-list"),
     path("comments/<int:pk>/", comment_detail, name="comment-detail"),
     path("tasks/<int:task_pk>/attachments/", attachment_list, name="task-attachments-list"),

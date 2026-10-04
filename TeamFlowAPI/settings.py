@@ -37,6 +37,7 @@ OTHERS_APPS = [
     'django_filters',
     'djoser',
     'rest_framework_simplejwt.token_blacklist',
+    "django_extensions",
 ]
 DJANGO_APPS = [
     'django.contrib.admin',
