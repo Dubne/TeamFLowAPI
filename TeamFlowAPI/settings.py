@@ -38,6 +38,7 @@ OTHERS_APPS = [
     'djoser',
     'rest_framework_simplejwt.token_blacklist',
     "django_extensions",
+    "drf_spectacular"
 ]
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -63,6 +64,13 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "TeamFlow API",
+    "DESCRIPTION": "API for team and project management",
+    "VERSION": "1.0.0",
 }
 
 SIMPLE_JWT = {

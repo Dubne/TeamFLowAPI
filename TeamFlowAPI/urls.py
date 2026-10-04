@@ -5,7 +5,9 @@ from apps.teams.views import TeamViewSet, TeamMembershipViewSet, InvitationViewS
 from apps.projects.views import ProjectViewSet
 from apps.tasks.views import TaskViewSet, CommentViewSet, AttachmentViewSet, TagViewSet, TaskTagViewSet
 from apps.users.views import LogoutView
- 
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+
 router = DefaultRouter()
 router.register("teams", TeamViewSet, basename="team" )
 router.register("projects", ProjectViewSet, basename="project")
@@ -78,6 +80,8 @@ api_urlpatterns = [
     path("invitations/", invitation_list),
     path("invitations/<int:pk>/accept/", invitation_accept),
     path("invitations/<int:pk>/decline/", invitation_decline),
+    path("schema/", SpectacularAPIView.as_view(), name="schema"), 
+    path("docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui",),
 ]
 
 urlpatterns = [

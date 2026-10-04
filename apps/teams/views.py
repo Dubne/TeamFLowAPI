@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
+from drf_spectacular.utils import extend_schema
 from core.permissions import IsTeamMember
 from .models import Team, Invitation, TeamMembership
 from .serializers import TeamSerializer, TeamCreateUpdateSerializer, InvitationSerializer, \
@@ -49,6 +50,10 @@ class TeamViewSet(viewsets.ModelViewSet):
         delete_team(team=team, user=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+            request=TransferOwnershipSerializer,
+            responses=TeamSerializer
+    )
     @action(detail=True, methods=["patch"], url_path="transfer-ownership")
     def transfer_ownership(self, request, pk=None):
         team = self.get_object()
@@ -64,7 +69,7 @@ class TeamMembershipViewSet(viewsets.ViewSet):
         team = get_object_or_404(Team, pk=team_pk)
         self.check_object_permissions(request, team)
         members = get_team_members(team=team)
-        return Response(TeamMembershipSerializer(members).data, many=True)
+        return Response(TeamMembershipSerializer(members, many=True).data)
 
     def destroy(self, request, team_pk=None, pk=None):
         team = get_object_or_404(Team, pk=team_pk)
@@ -94,8 +99,12 @@ class InvitationViewSet(viewsets.ViewSet):
         else:
             invitations = get_user_incoming_invitations(user=request.user)
 
-        return Response(InvitationSerializer(invitations,many=True).data, many=True)
+        return Response(InvitationSerializer(invitations,many=True).data)
 
+    @extend_schema(
+        request=InvitationCreateSerializer,
+        responses=InvitationSerializer
+    )
     def create(self, request, team_pk=None):
         team = get_object_or_404(Team, pk=team_pk)
         serializer = InvitationCreateSerializer(data=request.data)
