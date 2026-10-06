@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .filters import TaskFilter
+from django.core.cache import cache
 
 from apps.teams.models import TeamMembership, Team
 from ..projects.models import Project
@@ -173,6 +174,24 @@ class TagViewSet(viewsets.ModelViewSet):
         if self.action == "create":
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsTagTeamMember()]
+
+    def list(self, request, *args, **kwargs):
+        if "team_pk" not in self.kwargs:
+            return super().list(request, *args, **kwargs)
+
+        team_pk = self.kwargs["team_pk"]
+        cache_key = f"team:tags:{team_pk}"
+
+        cached_tags = cache.get(cache_key)
+        if cached_tags is not None:
+            return Response(cached_tags)
+
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+
+        cache.set(cache_key, serializer.data, 3600)
+
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         team = get_object_or_404(Team, pk=self.kwargs["team_pk"])
