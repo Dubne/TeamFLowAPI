@@ -3,7 +3,10 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
+from rest_framework.exceptions import Throttled
 from apps.activity.services import log_activity
+
 
 @transaction.atomic
 def create_team(*, owner, name, description=""):
@@ -268,6 +271,9 @@ def transfer_team_ownership(*, team, current_owner, new_owner):
 
     return team
 
-
-      
-
+def check_invitation_create_rate_limit(*, team_id):
+    cache_key = f"throttle:invitation:create:team:{team_id}"
+    cache.add(cache_key, 0, timeout=86400)
+    count = cache.incr(cache_key)
+    if count > 20:
+        raise Throttled(detail="Invitation creation rate limit exceeded")

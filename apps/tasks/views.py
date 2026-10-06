@@ -18,7 +18,7 @@ from .serializers import TaskAssignSerializer, TaskChangeStatusSerializer, TaskC
                                 AttachmentSerializer, AttachmentUploadSerializer, TagSerializer
                                 
 from .services import create_task, assign_task, delete_task, change_task_status, update_task, create_comment, \
-                update_comment, delete_comment, delete_tag, delete_attachment, add_tag_to_task, create_tag, remove_tag_from_task
+                update_comment, delete_comment, delete_tag, delete_attachment, add_tag_to_task, create_tag, remove_tag_from_task, check_task_creation_rate_limit
 from .selectors import get_project_tasks, get_user_visible_tasks, get_task_attachments, get_task_comments, get_team_tags
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -50,6 +50,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        check_task_creation_rate_limit(user_id=request.user.id)
+
         task = create_task(creator=request.user, **serializer.validated_data)
         return Response(TaskDetailSerializer(task).data, status=status.HTTP_201_CREATED)
 
@@ -84,7 +87,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="by-project/(?P<project_id>[^/.]+)")
     def by_project(self, request, project_id=None):
         project = get_object_or_404(Project, pk=project_id)
-        self.check_object_permissions(request, project)  # проверка через IsProjectTeamMember вручную
+        self.check_object_permissions(request, project)  
         tasks = get_project_tasks(project=project)
         serializer = TaskListSerializer(tasks, many=True)
         return Response(serializer.data)
@@ -189,7 +192,7 @@ class TagViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
 
-        cache.set(cache_key, serializer.data, 3600)
+        cache.set(cache_key, serializer.data, 300)
 
         return Response(serializer.data)
 

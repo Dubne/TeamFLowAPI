@@ -5,6 +5,8 @@ from ..teams.models import TeamMembership
 from ..projects.models import Project
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from rest_framework.exceptions import Throttled
+from django.core.cache import cache
 from apps.activity.services import log_activity
 
 SLA_BY_PRIORITY = {
@@ -283,8 +285,8 @@ def upload_attachment(*, task, file, uploaded_by):
         content_type=file.content_type,
     )
 
-
 def delete_attachment(*, attachment, user):
+
     if attachment.uploaded_by == user:
         attachment.file.delete(save=False)
         attachment.delete()
@@ -301,3 +303,10 @@ def delete_attachment(*, attachment, user):
 
     attachment.file.delete(save=False)
     attachment.delete() 
+
+def check_task_creation_rate_limit(*, user_id):
+    cache_key = f"throttle:task:create:user:{user_id}"
+    cache.add(cache_key, 0, timeout=3600)
+    count = cache.incr(cache_key)
+    if count > 20:
+        raise Throttled(detail="Task creation rate limit exceeded. Try again later.")

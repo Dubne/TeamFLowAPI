@@ -13,7 +13,7 @@ from .serializers import TeamSerializer, TeamCreateUpdateSerializer, InvitationS
       TeamMembershipRoleUpdateSerializer, TeamMembershipSerializer, InvitationCreateSerializer, TransferOwnershipSerializer
 from .selectors import get_user_teams, get_team_invitations, get_team_members, get_user_incoming_invitations
 from .services import create_team, update_team, delete_team, transfer_team_ownership, \
-    remove_member, change_member_role, invite_user, accept_invitation, decline_invitation
+    remove_member, change_member_role, invite_user, accept_invitation, decline_invitation, check_invitation_create_rate_limit
 
 User = get_user_model()
 
@@ -109,6 +109,9 @@ class InvitationViewSet(viewsets.ViewSet):
         team = get_object_or_404(Team, pk=team_pk)
         serializer = InvitationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        check_invitation_create_rate_limit(team_id=team_pk)
+
         invitation = invite_user(inviter=request.user, invited_user=serializer.validated_data["invited_user"], team=team)
         return Response(InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
 
