@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.core.cache import cache
 
 from core.permissions import IsProjectTeamMember
 from .models import Project
@@ -60,5 +61,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="statistic")
     def project_statistic(self, request, pk=None):
         project = self.get_object()
+
+        cache_key = f"project:statistics:{project.pk}"
+        cached_stats = cache.get(cache_key)
+        if cached_stats is not None:
+            return Response(cached_stats)
+
         stats = get_project_statistic(project=project)
+
+        cache.set(cache_key, stats, 60)
+
         return Response(stats)
