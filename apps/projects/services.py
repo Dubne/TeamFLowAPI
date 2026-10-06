@@ -35,7 +35,7 @@ def create_project(*, creator, name=None, description="", team):
      return project
  
 def update_project(*, project, user, name=None, description=None):
-    if project.creator != user:
+    if project.created_by != user:
         raise ValidationError("Only the creator can edit this project.")
 
     if name is not None:

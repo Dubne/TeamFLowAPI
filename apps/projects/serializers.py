@@ -19,7 +19,7 @@ class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
     team = serializers.PrimaryKeyRelatedField(queryset=Team.objects.all())
     class Meta:
         model = Project
-        fields = ["name", "description", "team", "status"]
+        fields = ["name", "description", "team"]
 
 class ChangeStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Project.Status.choices)

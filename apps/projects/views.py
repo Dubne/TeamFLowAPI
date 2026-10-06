@@ -41,7 +41,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         project = self.get_object()
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        updated_project = update_project(project=project, user=request.user, **serializer.validated_data)
+        updated_project = update_project(project=project, user=request.user, name = serializer.validated_data["name"], description=serializer.validated_data["description"])
         return Response(ProjectSerializer(updated_project).data)
 
     def destroy(self, request, *args, **kwargs):
