@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.contrib.auth import get_user_model
-
+from apps.notifications.tasks import send_invitation_notification
 from drf_spectacular.utils import extend_schema
 from core.permissions import IsTeamMember
 from .models import Team, Invitation, TeamMembership
@@ -112,7 +112,11 @@ class InvitationViewSet(viewsets.ViewSet):
 
         check_invitation_create_rate_limit(team_id=team_pk)
 
-        invitation = invite_user(inviter=request.user, invited_user=serializer.validated_data["invited_user"], team=team)
+        invited_user=serializer.validated_data["invited_user"]
+        invitation = invite_user(inviter=request.user, invited_user=invited_user, team=team)
+
+        send_invitation_notification.delay(invited_user.id, team.id)
+
         return Response(InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
 
     def accept(self, request, pk=None):

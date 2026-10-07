@@ -3,12 +3,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .filters import TaskFilter
-from django.core.cache import cache
 
+from django.core.cache import cache
+from apps.notifications.tasks import send_task_assigned_notification, send_comment_notification
 from apps.teams.models import TeamMembership, Team
 from ..projects.models import Project
 from core.permissions import IsTaskTeamMember, IsCommentTeamMember, IsTagTeamMember, IsAttachmentTeamMember
@@ -75,13 +77,19 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         updated_task = change_task_status(task=task, user=request.user, status=serializer.validated_data["status"])
         return Response(TaskDetailSerializer(updated_task).data)
-    
+
+    @extend_schema(
+        request=TaskAssignSerializer,
+        responses=TaskDetailSerializer
+    )
     @action(detail=True, methods=["patch"], url_path="assign")
     def assign_task(self, request, pk=None):
         task = self.get_object()
         serializer = TaskAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         updated_task = assign_task(task=task, assigner=request.user, assignee=serializer.validated_data["assignee"])
+        assignee = serializer.validated_data["assignee"]
+        send_task_assigned_notification.delay(assignee.id, task.title)
         return Response(TaskDetailSerializer(updated_task).data)
 
     @action(detail=False, methods=["get"], url_path="by-project/(?P<project_id>[^/.]+)")
@@ -119,6 +127,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         comment = create_comment(task=task, user=request.user, **serializer.validated_data)
+        if request.user != task.creator:
+            send_comment_notification.delay(task.assignee.id, comment.text)
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
