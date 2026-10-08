@@ -26,6 +26,7 @@ class Task(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField("Task", blank=True, related_name="tasks")
     sla_due_at = models.DateTimeField(null=True, blank=True) 
+    is_sla_breached = models.BooleanField(default=False)
     def __str__(self): 
         return self.title
 

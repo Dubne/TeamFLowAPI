@@ -38,7 +38,8 @@ OTHERS_APPS = [
     'djoser',
     'rest_framework_simplejwt.token_blacklist',
     "django_extensions",
-    "drf_spectacular"
+    "drf_spectacular",
+    "django_celery_beat",
 ]
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -103,6 +104,13 @@ CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_BEAT_SCHEDULE = {
+    "check-sla-breaches": {
+        "task": "apps.tasks.tasks.check_sla_breaches",
+        "schedule": 60.0, 
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -189,11 +197,7 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

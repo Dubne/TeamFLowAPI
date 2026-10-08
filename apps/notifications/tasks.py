@@ -43,3 +43,16 @@ def send_invitation_notification(invited_user_id, team_id):
         from_email="noreply@teamflow.local",
         recipient_list=[user.email],
     )
+
+@shared_task
+def notify_sla_breach(assignee_id, task_title):
+    try:
+        user = User.objects.get(id=assignee_id)
+    except User.DoesNotExist:
+        return
+    send_mail(
+        subject="SLA breached",
+        message=f"The task '{task_title}' is overdue",
+        from_email="noreply@teamflow.local",
+        recipient_list=[user.email],
+    )
