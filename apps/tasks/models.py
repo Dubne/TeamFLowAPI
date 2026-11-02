@@ -24,7 +24,7 @@ class Task(models.Model):
     priority = models.CharField(max_length=50, choices=Priority.choices, default=Priority.LOW)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    tags = models.ManyToManyField("Task", blank=True, related_name="tasks")
+    tags = models.ManyToManyField("Tag", blank=True, related_name="tasks")
     sla_due_at = models.DateTimeField(null=True, blank=True) 
     is_sla_breached = models.BooleanField(default=False)
     def __str__(self): 

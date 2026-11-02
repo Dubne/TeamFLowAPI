@@ -47,7 +47,7 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         team = self.get_object()
-        delete_team(team=team, user=request.user)
+        delete_team(team=team, deleter=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
@@ -82,7 +82,7 @@ class TeamMembershipViewSet(viewsets.ViewSet):
     def change_role(self, request, team_pk=None, pk=None):
         team = get_object_or_404(Team, pk=team_pk)
         self.check_object_permissions(request, team)
-        member = get_object_or_404(settings.AUTH_USER_MODEL, pk=pk)
+        member = get_object_or_404(User, pk=pk)
         serializer = TeamMembershipRoleUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         updated = change_member_role(member=member, changer=request.user, team=team, role=serializer.validated_data["role"])
@@ -109,12 +109,10 @@ class InvitationViewSet(viewsets.ViewSet):
         team = get_object_or_404(Team, pk=team_pk)
         serializer = InvitationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        check_invitation_create_rate_limit(team_id=team_pk)
-
         invited_user=serializer.validated_data["invited_user"]
         invitation = invite_user(inviter=request.user, invited_user=invited_user, team=team)
 
+        check_invitation_create_rate_limit(team_id=team_pk)
         send_invitation_notification.delay(invited_user.id, team.id)
 
         return Response(InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)

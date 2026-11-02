@@ -56,11 +56,11 @@ def delete_team(*, deleter, team):
 
 
 def update_team(*, team, user, title=None, description=None):
-    if team.creator != user:
+    if team.owner != user:
         raise ValidationError("Only the creator can edit this team.")
 
     if title is not None:
-        team.title = title
+        team.name = title
     if description is not None:
         team.description = description 
 
@@ -95,30 +95,51 @@ def invite_user(*, inviter, invited_user, team):
     )
     return invitation
 
-@transaction.atomic 
+
 def accept_invitation(*, invitation, user):
 
-    if invitation.invited_user != user:
-        raise ValidationError("You cannot accept this invitation")
-    
+    if invitation.invited_user_id != user.id:
+        raise ValidationError("You cannot accept this invitation.")
+
+    if invitation.expired_at <= timezone.now():
+        Invitation.objects.filter(
+            pk=invitation.pk,
+            status=Invitation.Status.PENDING,
+        ).update(status=Invitation.Status.EXPIRED)
+
+        raise ValidationError("This invitation has expired.")
+
+    return _accept_invitation(invitation_id=invitation.pk, user=user)
+
+
+@transaction.atomic
+def _accept_invitation(*, invitation_id, user):
+
+    invitation = Invitation.objects.select_for_update().get(
+        pk=invitation_id
+    )
+
+    if invitation.invited_user_id != user.id:
+        raise ValidationError("You cannot accept this invitation.")
+
     if invitation.status != Invitation.Status.PENDING:
-        raise ValidationError()
-    
-    if invitation.expired_at < timezone.now():
+        raise ValidationError("This invitation is no longer pending.")
+
+    if invitation.expired_at <= timezone.now():
         invitation.status = Invitation.Status.EXPIRED
         invitation.save(update_fields=["status"])
         raise ValidationError("This invitation has expired.")
 
     if TeamMembership.objects.filter(
         team=invitation.team,
-        user=user
-    ).exists() :
-        raise ValidationError("You are already in this team")
-    
+        user=user,
+    ).exists():
+        raise ValidationError("You are already in this team.")
+
     membership = TeamMembership.objects.create(
         user=user,
-        team = invitation.team,
-        role = TeamMembership.Role.MEMBER
+        team=invitation.team,
+        role=TeamMembership.Role.MEMBER,
     )
 
     invitation.status = Invitation.Status.ACCEPTED
@@ -132,27 +153,49 @@ def accept_invitation(*, invitation, user):
         task=None,
         metadata={"invitation_id": invitation.id},
     )
-    
+
     return membership
 
-@transaction.atomic
+
 def decline_invitation(*, invitation, user):
 
-    if invitation.invited_user != user:
-            raise ValidationError("You cannot decline this invitation")
-        
-    if invitation.status != Invitation.Status.PENDING:
-            raise ValidationError()
+    if invitation.invited_user_id != user.id:
+        raise ValidationError("You cannot decline this invitation.")
 
-    if invitation.expired_at < timezone.now():
-                invitation.status = Invitation.Status.EXPIRED
-                invitation.save(update_fields=["status"])
-                raise ValidationError("This invitation has expired.")
-    
+    if invitation.expired_at <= timezone.now():
+        Invitation.objects.filter(
+            pk=invitation.pk,
+            status=Invitation.Status.PENDING,
+        ).update(status=Invitation.Status.EXPIRED)
+
+        raise ValidationError("This invitation has expired.")
+
+    return _decline_invitation(invitation_id=invitation.pk, user=user)
+
+
+@transaction.atomic
+def _decline_invitation(*, invitation_id, user):
+
+    invitation = Invitation.objects.select_for_update().get(
+        pk=invitation_id
+    )
+
+    if invitation.invited_user_id != user.id:
+        raise ValidationError("You cannot decline this invitation.")
+
+    if invitation.status != Invitation.Status.PENDING:
+        raise ValidationError("This invitation is no longer pending.")
+
+    if invitation.expired_at <= timezone.now():
+        invitation.status = Invitation.Status.EXPIRED
+        invitation.save(update_fields=["status"])
+        raise ValidationError("This invitation has expired.")
+
     invitation.status = Invitation.Status.DECLINED
     invitation.save(update_fields=["status"])
 
     return invitation
+
 
 def remove_member(*, remover, member, team):
      

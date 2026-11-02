@@ -20,7 +20,7 @@ from .serializers import TaskAssignSerializer, TaskChangeStatusSerializer, TaskC
                                 AttachmentSerializer, AttachmentUploadSerializer, TagSerializer
                                 
 from .services import create_task, assign_task, delete_task, change_task_status, update_task, create_comment, \
-                update_comment, delete_comment, delete_tag, delete_attachment, add_tag_to_task, create_tag, remove_tag_from_task, check_task_creation_rate_limit
+                update_comment, delete_comment, delete_tag, delete_attachment, add_tag_to_task, create_tag, remove_tag_from_task, check_task_creation_rate_limit, upload_attachment
 from .selectors import get_project_tasks, get_user_visible_tasks, get_task_attachments, get_task_comments, get_team_tags
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -127,7 +127,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         comment = create_comment(task=task, user=request.user, **serializer.validated_data)
-        if request.user != task.creator:
+        if request.user != task.assignee:
             send_comment_notification.delay(task.assignee.id, comment.text)
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 

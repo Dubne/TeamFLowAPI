@@ -7,9 +7,9 @@ from apps.tasks.models import Task
 
 class ActivityLog(models.Model):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    team = models.ForeignKey(Team, blank=True, null=True, on_delete=models.CASCADE)
-    project = models.ForeignKey(Project, blank=True, null=True, on_delete=models.CASCADE)
-    task = models.ForeignKey(Task, blank=True, null=True, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, blank=True, null=True, on_delete=models.SET_NULL)
+    project = models.ForeignKey(Project, blank=True, null=True, on_delete=models.SET_NULL)
+    task = models.ForeignKey(Task, blank=True, null=True, on_delete=models.SET_NULL)
     action = models.CharField(max_length=100)
     metadata = models.JSONField(default=dict, blank=True)
     date = models.DateTimeField(auto_now_add=True)
