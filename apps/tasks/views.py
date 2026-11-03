@@ -13,7 +13,7 @@ from django.core.cache import cache
 from apps.notifications.tasks import send_task_assigned_notification, send_comment_notification
 from apps.teams.models import TeamMembership, Team
 from ..projects.models import Project
-from core.permissions import IsTaskTeamMember, IsCommentTeamMember, IsTagTeamMember, IsAttachmentTeamMember
+from core.permissions import IsTaskTeamMember, IsCommentTeamMember, IsTagTeamMember, IsAttachmentTeamMember, IsProjectTeamMember
 from .models import Task, Comment, Tag, Attachment
 from .serializers import TaskAssignSerializer, TaskChangeStatusSerializer, TaskCreateSerializer, \
                                 TaskDetailSerializer, TaskListSerializer, TaskUpdatedSerializer, CommentCreateUpdateSerializer, CommentSerializer, \
@@ -31,9 +31,19 @@ class TaskViewSet(viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_permissions(self):
-        if self.action == "create":
+         if self.action == "create":
             return [IsAuthenticated()]
-        return [IsAuthenticated(), IsTaskTeamMember()]
+
+         if self.action == "by_project":
+            return [
+                IsAuthenticated(),
+                IsProjectTeamMember()
+                ]   
+
+         return [
+                IsAuthenticated(),
+                IsTaskTeamMember()
+                ]       
     
     def get_queryset(self):
         return get_user_visible_tasks(user=self.request.user)
@@ -102,10 +112,21 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
-        if "task_pk" in self.kwargs:
-            task = get_object_or_404(Task, pk=self.kwargs["task_pk"])
-            return get_task_comments(task=task)
-        return Comment.objects.all()
+        if "task_pk" not in self.kwargs:
+            return Comment.objects.none()
+
+        task = get_object_or_404(
+            Task,
+            pk=self.kwargs["task_pk"]
+        )
+
+        if not TeamMembership.objects.filter(
+            user=self.request.user,
+            team=task.project.team
+        ).exists():
+            self.permission_denied(self.request)
+
+        return get_task_comments(task=task)
     
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -147,10 +168,21 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAttachmentTeamMember]
 
     def get_queryset(self):
-        if "task_pk" in self.kwargs:
-            task = get_object_or_404(Task, pk=self.kwargs["task_pk"])
-            return get_task_attachments(task=task)
-        return Attachment.objects.all()
+        if "task_pk" not in self.kwargs:
+            return Attachment.objects.none()
+
+        task = get_object_or_404(
+            Task,
+            pk=self.kwargs["task_pk"]
+        )
+
+        if not TeamMembership.objects.filter(
+            user=self.request.user,
+            team=task.project.team
+        ).exists():
+            self.permission_denied(self.request)
+
+        return get_task_attachments(task=task)
 
     def get_serializer_class(self):
         if self.action == "create":

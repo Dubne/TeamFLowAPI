@@ -19,6 +19,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "last_name",
             "date_joined",
         ]
+        read_only_fields = [
+            "id",
+            "email",
+            "date_joined",
+        ]
         
 class UserCreateSerializer(BaseUserCreateSerializer):
     class Meta(BaseUserCreateSerializer.Meta):

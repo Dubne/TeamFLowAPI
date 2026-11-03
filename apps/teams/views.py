@@ -95,11 +95,21 @@ class InvitationViewSet(viewsets.ViewSet):
     def list(self, request, team_pk=None):
         if team_pk is not None:
             team = get_object_or_404(Team, pk=team_pk)
+
+            if not TeamMembership.objects.filter(
+                user=request.user,
+                team=team
+            ).exists():
+                self.permission_denied(request)
+
             invitations = get_team_invitations(team=team)
         else:
-            invitations = get_user_incoming_invitations(user=request.user)
+            invitations = get_user_incoming_invitations(
+                user=request.user
+            )
 
-        return Response(InvitationSerializer(invitations,many=True).data)
+        return Response(
+            InvitationSerializer(invitations, many=True).data)
 
     @extend_schema(
         request=InvitationCreateSerializer,
