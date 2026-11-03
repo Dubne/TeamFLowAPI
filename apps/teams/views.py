@@ -15,7 +15,7 @@ from .selectors import get_user_teams, get_team_invitations, get_team_members, g
 from .services import create_team, update_team, delete_team, transfer_team_ownership, \
     remove_member, change_member_role, invite_user, accept_invitation, decline_invitation, check_invitation_create_rate_limit
 
-User = get_user_model()
+User = get_user_model() 
 
 
 class TeamViewSet(viewsets.ModelViewSet): 

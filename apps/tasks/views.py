@@ -223,6 +223,16 @@ class TagViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         if "team_pk" not in self.kwargs:
             return super().list(request, *args, **kwargs)
+        team = get_object_or_404(Team, pk=self.kwargs["team_pk"])
+
+        if not TeamMembership.objects.filter(
+            user=request.user,
+            team=team
+        ).exists():
+            self.permission_denied(
+                request,
+                message="You are not a member of this team."
+            )
 
         team_pk = self.kwargs["team_pk"]
         cache_key = f"team:tags:{team_pk}"
