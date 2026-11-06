@@ -46,5 +46,5 @@ class InvitationSerializer(serializers.ModelSerializer):
 class InvitationCreateSerializer(serializers.ModelSerializer):
     invited_user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     class Meta:
-        model = Invitation
+        model = Invitation 
         fields = ["invited_user"]
