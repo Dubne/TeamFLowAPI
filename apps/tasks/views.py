@@ -46,6 +46,8 @@ class TaskViewSet(viewsets.ModelViewSet):
                 ]       
     
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Task.objects.none()
         return get_user_visible_tasks(user=self.request.user)
     
     def get_serializer_class(self):
@@ -264,12 +266,19 @@ class TagViewSet(viewsets.ModelViewSet):
 
 class TaskTagViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, IsTaskTeamMember]
- 
+
+    @extend_schema(
+    responses=TagSerializer(many=True)
+    )
     def list(self, request, task_pk=None):
         task = get_object_or_404(Task, pk=task_pk)
         self.check_object_permissions(request, task)
         return Response(TagSerializer(task.tags.all(), many=True).data)
 
+    @extend_schema(
+    request=None,
+    responses=TagSerializer(many=True)
+    )
     def create(self, request, task_pk=None):
         task = get_object_or_404(Task, pk=task_pk)
         self.check_object_permissions(request, task)
@@ -277,6 +286,10 @@ class TaskTagViewSet(viewsets.ViewSet):
         add_tag_to_task(task=task, tag=tag, user=request.user)
         return Response(TagSerializer(task.tags.all(), many=True).data)
 
+    @extend_schema(
+    request=None,
+    responses={204: None}
+    )
     def destroy(self, request, task_pk=None, pk=None):
         task = get_object_or_404(Task, pk=task_pk)
         self.check_object_permissions(request, task)

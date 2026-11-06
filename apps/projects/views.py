@@ -25,6 +25,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated(), IsProjectTeamMember()]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Project.objects.none()
         return get_user_visible_projects(user=self.request.user)
 
     def get_serializer_class(self):

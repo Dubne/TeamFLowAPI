@@ -25,6 +25,8 @@ class TeamViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated(), IsTeamMember()]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Team.objects.none()
         return get_user_teams(user=self.request.user)
 
     def get_serializer_class(self):
@@ -65,12 +67,18 @@ class TeamViewSet(viewsets.ModelViewSet):
 class TeamMembershipViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, IsTeamMember]
 
+    @extend_schema(
+    responses=TeamMembershipSerializer(many=True)
+    )
     def list(self, request, team_pk=None):
         team = get_object_or_404(Team, pk=team_pk)
         self.check_object_permissions(request, team)
         members = get_team_members(team=team)
         return Response(TeamMembershipSerializer(members, many=True).data)
 
+    @extend_schema(
+    responses={204: None}
+    )
     def destroy(self, request, team_pk=None, pk=None):
         team = get_object_or_404(Team, pk=team_pk)
         self.check_object_permissions(request, team)
@@ -78,6 +86,10 @@ class TeamMembershipViewSet(viewsets.ViewSet):
         remove_member(team=team, member=member, remover=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+    request=TeamMembershipRoleUpdateSerializer,
+    responses=TeamMembershipSerializer
+    )
     @action(detail=True, methods=["patch"], url_path="change-role")
     def change_role(self, request, team_pk=None, pk=None):
         team = get_object_or_404(Team, pk=team_pk)
@@ -91,7 +103,11 @@ class TeamMembershipViewSet(viewsets.ViewSet):
 
 class InvitationViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+    serializer_class = InvitationSerializer
 
+    @extend_schema(
+    responses=InvitationSerializer(many=True)
+    )
     def list(self, request, team_pk=None):
         if team_pk is not None:
             team = get_object_or_404(Team, pk=team_pk)
@@ -112,8 +128,8 @@ class InvitationViewSet(viewsets.ViewSet):
             InvitationSerializer(invitations, many=True).data)
 
     @extend_schema(
-        request=InvitationCreateSerializer,
-        responses=InvitationSerializer
+    request=InvitationCreateSerializer,
+    responses={201: InvitationSerializer}
     )
     def create(self, request, team_pk=None):
         team = get_object_or_404(Team, pk=team_pk)
@@ -127,11 +143,25 @@ class InvitationViewSet(viewsets.ViewSet):
 
         return Response(InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "detail": {"type": "string"},
+                "membership_id": {"type": "integer"},
+            }
+        }
+    }
+    )
     def accept(self, request, pk=None):
         invitation = get_object_or_404(Invitation, pk=pk)
         membership = accept_invitation(invitation=invitation, user=request.user,)
         return Response({"detail": "Invitation accepted.","membership_id": membership.id,},status=status.HTTP_200_OK,)
 
+    @extend_schema(
+    responses=InvitationSerializer
+    )
     def decline(self, request, pk=None):
         invitation = get_object_or_404(Invitation, pk=pk)
         invitation = decline_invitation(invitation=invitation, user=request.user)
