@@ -6,14 +6,14 @@ ENV PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-RUN groupadd --system app && useradd --system --gid app --home-dir /app user
+RUN groupadd --system app && useradd --system --gid app --home-dir /app app
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/media /app/staticfiles && chown -R user:app /app
+RUN mkdir -p /app/media /app/staticfiles && chown -R app:app /app
 
 USER app
 
