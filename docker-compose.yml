@@ -1,0 +1,79 @@
+name: teamflow
+
+x-app: &app
+  build: .
+  image: teamflow-app
+  env_file: .env                       
+  environment:                         
+    POSTGRES_HOST: db                  
+    POSTGRES_PORT: "5432"
+    REDIS_URL: redis://redis:6379
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:                       
+      POSTGRES_DB: ${POSTGRES_DB}      
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    <<: *app
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn TeamFlowAPI.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile -"
+    ports:
+      - "8000:8000"                    
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy     
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/admin/login/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s                
+
+  celery:
+    <<: *app
+    command: celery -A TeamFlowAPI worker --loglevel=info
+    depends_on:
+      web:
+        condition: service_healthy     
+
+  celery-beat:
+    <<: *app
+    command: celery -A TeamFlowAPI beat --loglevel=info --schedule /tmp/celerybeat-schedule
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
