@@ -9,7 +9,12 @@ from django.core.cache import cache
 
 from core.permissions import IsProjectTeamMember
 from .models import Project
-from .serializers import ProjectSerializer, ProjectCreateUpdateSerializer, ChangeStatusSerializer
+from .serializers import (
+    ProjectSerializer,
+    ProjectCreateUpdateSerializer,
+    ProjectUpdateSerializer,
+    ChangeStatusSerializer,
+)
 from .services import create_project, update_project, delete_project, change_project_status
 from .selectors import get_project_statistic, get_user_visible_projects
  
@@ -30,8 +35,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return get_user_visible_projects(user=self.request.user)
 
     def get_serializer_class(self):
-        if self.action in ("create", "update", "partial_update"):
+        if self.action == "create":
             return ProjectCreateUpdateSerializer
+        if self.action in ("update", "partial_update"):
+            return ProjectUpdateSerializer
         return ProjectSerializer
 
     def create(self, request, *args, **kwargs):

@@ -115,7 +115,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if "task_pk" not in self.kwargs:
-            return Comment.objects.none()
+            return Comment.objects.select_related("task__project__team", "user")
 
         task = get_object_or_404(
             Task,
@@ -150,7 +150,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         comment = create_comment(task=task, user=request.user, **serializer.validated_data)
-        if request.user != task.assignee:
+        if task.assignee_id is not None and task.assignee_id != request.user.id:
             send_comment_notification.delay(task.assignee.id, comment.text)
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 
@@ -171,7 +171,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if "task_pk" not in self.kwargs:
-            return Attachment.objects.none()
+            return Attachment.objects.select_related("task__project__team", "uploaded_by")
 
         task = get_object_or_404(
             Task,

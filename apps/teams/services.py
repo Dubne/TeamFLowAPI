@@ -55,7 +55,7 @@ def delete_team(*, deleter, team):
     team.delete()
 
 
-def update_team(*, team, user, title=None, description=None):
+def update_team(*, team, user, name=None, description=None):
     membership = TeamMembership.objects.filter(user=user, team=team).first()
     if membership is None:
         raise ValidationError("You are not a member of this team.")
@@ -64,8 +64,8 @@ def update_team(*, team, user, title=None, description=None):
     if team.owner != user:
         raise ValidationError("Only the creator can edit this team.")
 
-    if title is not None:
-        team.name = title
+    if name is not None:
+        team.name = name
     if description is not None:
         team.description = description 
 
@@ -88,6 +88,8 @@ def invite_user(*, inviter, invited_user, team):
     membership = TeamMembership.objects.filter(user=invited_user, team= team).first()
     if membership is not None:
             raise ValidationError("User is already a member of this team")
+
+    check_invitation_create_rate_limit(team_id=team.id)
     
     invitation = Invitation.objects.create(invited_by = inviter, invited_user = invited_user, team=team, expired_at=expired_at)
     log_activity(

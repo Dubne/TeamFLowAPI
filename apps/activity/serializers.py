@@ -4,14 +4,15 @@ from .models import ActivityLog
 from ..users.serializers import UserShortSerializer
 
 
-class ActivityLogSerializer(serializers.Serializer):
-    actor = UserShortSerializer(read_only=True)
+class ActivityLogSerializer(serializers.ModelSerializer):
+    actor = UserShortSerializer(read_only=True, allow_null=True)
+
     class Meta:
         model = ActivityLog
-        fields = (
+        fields = [
             "id",
             "actor",
             "action",
             "metadata",
             "date",
-        )
+        ]

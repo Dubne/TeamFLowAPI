@@ -17,9 +17,24 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
     team = serializers.PrimaryKeyRelatedField(queryset=Team.objects.all())
+
     class Meta:
         model = Project
         fields = ["name", "description", "team"]
+
+
+class ProjectUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ["name", "description"]
+
+    def validate(self, attrs):
+        if "team" in self.initial_data:
+            raise serializers.ValidationError(
+                {"team": "A project's team cannot be changed."}
+            )
+        return attrs
+
 
 class ChangeStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Project.Status.choices)
@@ -28,4 +43,3 @@ class ProjectShortSerializer(serializers.ModelSerializer):
         model = Project
         fields = ["id", "name"]
     
-
