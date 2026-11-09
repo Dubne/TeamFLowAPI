@@ -71,8 +71,21 @@ def delete_task(*, task, user):
     task.delete()
 
 def update_task(*, task, user, title=None, description=None, priority=None):
-    if task.creator != user:
-        raise ValidationError("Only the creator can edit this task.")
+
+    updater_membership = TeamMembership.objects.filter(
+            team=task.project.team,
+            user=user,
+        ).first()
+    
+    if updater_membership is None:
+        raise ValidationError("You are not a member of this team.")
+    
+    if updater_membership.role not in [
+        TeamMembership.Role.OWNER,
+        TeamMembership.Role.ADMIN,
+    ]:
+        raise ValidationError(
+            "Only team owners and admins can update tasks.")
 
     if title is not None:
         task.title = title

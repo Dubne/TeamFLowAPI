@@ -31,10 +31,6 @@ class Task(models.Model):
         return self.title
 
 class Comment(models.Model):
-    class Visibility(models.TextChoices):
-        PUBLIC = 'PUBLIC', "Public"
-        INTERNAL = "INTERNAL", "Internal"
-    visibility = models.CharField(max_length=50, choices=Visibility.choices, default=Visibility.PUBLIC)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="comments")
     text = models.TextField()
