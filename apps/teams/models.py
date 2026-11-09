@@ -11,13 +11,19 @@ class Team(models.Model):
         return self.name 
 
 class TeamMembership(models.Model):
-
+    
     class Role(models.TextChoices):
         OWNER = "OWNER", "Owner" 
         ADMIN = "ADMIN", "Admin"
         MEMBER = "MEMBER", "Member"
         VIEWER = "VIEWER", "Viewer"
 
+    ROLE_RANK = {Role.VIEWER: 1, Role.MEMBER: 2, Role.ADMIN: 3, Role.OWNER: 4}
+
+    @property
+    def rank(self):
+        return self.ROLE_RANK[self.role]
+    
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="memberships")
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.MEMBER)

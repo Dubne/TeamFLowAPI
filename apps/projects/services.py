@@ -35,6 +35,15 @@ def create_project(*, creator, name=None, description="", team):
      return project
  
 def update_project(*, project, user, name=None, description=None):
+    membership = TeamMembership.objects.filter(
+        team=project.team,
+        user=user,
+    ).first()
+
+    if membership is None:
+        raise ValidationError("You are not a member of this team.")
+    if membership.role == TeamMembership.Role.VIEWER:
+        raise ValidationError("Viewers have read-only access.")
     if project.created_by != user:
         raise ValidationError("Only the creator can edit this project.")
 

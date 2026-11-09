@@ -56,6 +56,11 @@ def delete_team(*, deleter, team):
 
 
 def update_team(*, team, user, title=None, description=None):
+    membership = TeamMembership.objects.filter(user=user, team=team).first()
+    if membership is None:
+        raise ValidationError("You are not a member of this team.")
+    if membership.role == TeamMembership.Role.VIEWER:
+        raise ValidationError("Viewers have read-only access.")
     if team.owner != user:
         raise ValidationError("Only the creator can edit this team.")
 
@@ -196,29 +201,33 @@ def _decline_invitation(*, invitation_id, user):
 
     return invitation
 
-
+@transaction.atomic
 def remove_member(*, remover, member, team):
      
      membership = TeamMembership.objects.filter(
           user=member,
           team = team
      ).first()
+
      if membership is None:
             raise ValidationError("User is not a member of this team")
-     if membership.role == TeamMembership.Role.OWNER:
-            raise ValidationError("Team owner cannot be removed") 
 
      requester_membership = TeamMembership.objects.filter(
           user=remover,
           team=team
      ).first()
+
      if requester_membership is None:
             raise ValidationError("User is not a member of this team")
+     
      if requester_membership.role not in [
           TeamMembership.Role.OWNER,
           TeamMembership.Role.ADMIN
      ]:
           raise ValidationError("You do not have permission to remove members")
+
+     if requester_membership.rank <= membership.rank:
+          raise ValidationError("You cannot remove this member.")
      
      membership.delete()
 
