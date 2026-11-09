@@ -31,7 +31,6 @@ def test_outsider_cannot_list_team_invitations(client_for, team_ctx):
 
 
 def test_business_rule_violation_returns_4xx_not_500(client_for, team_ctx, task):
-    # обычный member пытается назначать задачи — сервис поднимает ValidationError
     r = client_for(team_ctx.member).patch(
         f"/api/tasks/{task.id}/assign/", {"assignee": team_ctx.member.id}, format="json"
     )

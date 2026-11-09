@@ -5,6 +5,7 @@ from apps.teams.views import TeamViewSet, TeamMembershipViewSet, InvitationViewS
 from apps.projects.views import ProjectViewSet
 from apps.tasks.views import TaskViewSet, CommentViewSet, AttachmentViewSet, TagViewSet, TaskTagViewSet
 from apps.users.views import LogoutView
+from apps.activity.views import TaskActivityView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 
@@ -62,6 +63,7 @@ invitation_decline = InvitationViewSet.as_view({
     "patch": "decline",
 })
 
+
 api_urlpatterns = [
     path("", include(router.urls)),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
@@ -73,6 +75,7 @@ api_urlpatterns = [
     path("tags/<int:pk>/", tag_detail),
     path("tasks/<int:task_pk>/tags/", task_tag_list),
     path("tasks/<int:task_pk>/tags/<int:pk>/", task_tag_detail),
+    path("tasks/<int:task_pk>/activity/", TaskActivityView.as_view(), name="task-activity"),
     path("teams/<int:team_pk>/members/", team_membership_list),
     path("teams/<int:team_pk>/members/<int:pk>/", team_membership_detail),
     path("teams/<int:team_pk>/members/<int:pk>/change-role/", team_membership_change_role),
