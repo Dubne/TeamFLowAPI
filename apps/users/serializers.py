@@ -1,14 +1,17 @@
-from rest_framework import serializers
-from .models import User
 from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer
+from rest_framework import serializers
+
+from .models import User
+
 
 class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "avatar"]
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta: 
+    class Meta:
         model = User
         fields = [
             "id",
@@ -24,11 +27,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "email",
             "date_joined",
         ]
-        
+
+
 class UserCreateSerializer(BaseUserCreateSerializer):
     class Meta(BaseUserCreateSerializer.Meta):
         model = User
         fields = ["id", "username", "email", "password", "first_name", "last_name"]
+
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()

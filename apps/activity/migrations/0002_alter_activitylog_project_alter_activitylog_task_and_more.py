@@ -5,28 +5,42 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('activity', '0001_initial'),
-        ('projects', '0001_initial'),
-        ('tasks', '0004_alter_task_tags'),
-        ('teams', '0002_alter_teammembership_team'),
+        ("activity", "0001_initial"),
+        ("projects", "0001_initial"),
+        ("tasks", "0004_alter_task_tags"),
+        ("teams", "0002_alter_teammembership_team"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='activitylog',
-            name='project',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='projects.project'),
+            model_name="activitylog",
+            name="project",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="projects.project",
+            ),
         ),
         migrations.AlterField(
-            model_name='activitylog',
-            name='task',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='tasks.task'),
+            model_name="activitylog",
+            name="task",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="tasks.task",
+            ),
         ),
         migrations.AlterField(
-            model_name='activitylog',
-            name='team',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='teams.team'),
+            model_name="activitylog",
+            name="team",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="teams.team",
+            ),
         ),
     ]

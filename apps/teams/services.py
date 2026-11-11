@@ -1,25 +1,20 @@
-from .models import Team, TeamMembership, Invitation
 from datetime import timedelta
-from django.utils import timezone
-from django.db import transaction
-from django.core.exceptions import ValidationError
+
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import Throttled
+
 from apps.activity.services import log_activity
+
+from .models import Invitation, Team, TeamMembership
 
 
 @transaction.atomic
 def create_team(*, owner, name, description=""):
-    team = Team.objects.create(
-        owner=owner,
-        name=name,
-        description=description
-    )
-    TeamMembership.objects.create(
-        user=owner,
-        team=team,
-        role=TeamMembership.Role.OWNER
-    ) 
+    team = Team.objects.create(owner=owner, name=name, description=description)
+    TeamMembership.objects.create(user=owner, team=team, role=TeamMembership.Role.OWNER)
 
     log_activity(
         actor=owner,
@@ -32,16 +27,17 @@ def create_team(*, owner, name, description=""):
 
     return team
 
+
 @transaction.atomic
 def delete_team(*, deleter, team):
-      
+
     membership = TeamMembership.objects.filter(user=deleter, team=team).first()
 
     if membership is None:
-            raise ValidationError("You are not a member of this team.")
-      
+        raise ValidationError("You are not a member of this team.")
+
     if membership.role != TeamMembership.Role.OWNER:
-            raise ValidationError("Only the team owner can delete team.")
+        raise ValidationError("Only the team owner can delete team.")
 
     log_activity(
         actor=deleter,
@@ -67,31 +63,34 @@ def update_team(*, team, user, name=None, description=None):
     if name is not None:
         team.name = name
     if description is not None:
-        team.description = description 
+        team.description = description
 
     team.save()
     return team
 
+
 def invite_user(*, inviter, invited_user, team):
     expired_at = timezone.now() + timedelta(days=7)
-    inviter_membership = TeamMembership.objects.filter(user=inviter, team= team).first()
+    inviter_membership = TeamMembership.objects.filter(user=inviter, team=team).first()
 
     if inviter_membership is None:
-            raise ValidationError("Inviter is not a member of this team")
+        raise ValidationError("Inviter is not a member of this team")
 
     if inviter_membership.role not in [
-                  TeamMembership.Role.OWNER,
-                  TeamMembership.Role.ADMIN
-             ]:
-            raise ValidationError("You do not have permission to invite a user")
-    
-    membership = TeamMembership.objects.filter(user=invited_user, team= team).first()
+        TeamMembership.Role.OWNER,
+        TeamMembership.Role.ADMIN,
+    ]:
+        raise ValidationError("You do not have permission to invite a user")
+
+    membership = TeamMembership.objects.filter(user=invited_user, team=team).first()
     if membership is not None:
-            raise ValidationError("User is already a member of this team")
+        raise ValidationError("User is already a member of this team")
 
     check_invitation_create_rate_limit(team_id=team.id)
-    
-    invitation = Invitation.objects.create(invited_by = inviter, invited_user = invited_user, team=team, expired_at=expired_at)
+
+    invitation = Invitation.objects.create(
+        invited_by=inviter, invited_user=invited_user, team=team, expired_at=expired_at
+    )
     log_activity(
         actor=inviter,
         action="user_invited",
@@ -122,9 +121,7 @@ def accept_invitation(*, invitation, user):
 @transaction.atomic
 def _accept_invitation(*, invitation_id, user):
 
-    invitation = Invitation.objects.select_for_update().get(
-        pk=invitation_id
-    )
+    invitation = Invitation.objects.select_for_update().get(pk=invitation_id)
 
     if invitation.invited_user_id != user.id:
         raise ValidationError("You cannot accept this invitation.")
@@ -183,9 +180,7 @@ def decline_invitation(*, invitation, user):
 @transaction.atomic
 def _decline_invitation(*, invitation_id, user):
 
-    invitation = Invitation.objects.select_for_update().get(
-        pk=invitation_id
-    )
+    invitation = Invitation.objects.select_for_update().get(pk=invitation_id)
 
     if invitation.invited_user_id != user.id:
         raise ValidationError("You cannot decline this invitation.")
@@ -203,37 +198,34 @@ def _decline_invitation(*, invitation_id, user):
 
     return invitation
 
+
 @transaction.atomic
 def remove_member(*, remover, member, team):
-     
-     membership = TeamMembership.objects.filter(
-          user=member,
-          team = team
-     ).first()
 
-     if membership is None:
-            raise ValidationError("User is not a member of this team")
+    membership = TeamMembership.objects.filter(user=member, team=team).first()
 
-     requester_membership = TeamMembership.objects.filter(
-          user=remover,
-          team=team
-     ).first()
+    if membership is None:
+        raise ValidationError("User is not a member of this team")
 
-     if requester_membership is None:
-            raise ValidationError("User is not a member of this team")
-     
-     if requester_membership.role not in [
-          TeamMembership.Role.OWNER,
-          TeamMembership.Role.ADMIN
-     ]:
-          raise ValidationError("You do not have permission to remove members")
+    requester_membership = TeamMembership.objects.filter(
+        user=remover, team=team
+    ).first()
 
-     if requester_membership.rank <= membership.rank:
-          raise ValidationError("You cannot remove this member.")
-     
-     membership.delete()
+    if requester_membership is None:
+        raise ValidationError("User is not a member of this team")
 
-     log_activity(
+    if requester_membership.role not in [
+        TeamMembership.Role.OWNER,
+        TeamMembership.Role.ADMIN,
+    ]:
+        raise ValidationError("You do not have permission to remove members")
+
+    if requester_membership.rank <= membership.rank:
+        raise ValidationError("You cannot remove this member.")
+
+    membership.delete()
+
+    log_activity(
         actor=remover,
         action="remove_member",
         team=team,
@@ -241,47 +233,46 @@ def remove_member(*, remover, member, team):
         task=None,
         metadata={"removed_member": member.id},
     )
-     
+
+
 def change_member_role(*, member, changer, team, role):
-     membership = TeamMembership.objects.filter(
-               user=member,
-               team = team
-          ).first()
-     
-     if membership is None:
-            raise ValidationError("User is not a member of this team")
-     if membership.role == TeamMembership.Role.OWNER:
-            raise ValidationError("Team owner's role cannot be changed") 
-     
-     changer_membership = TeamMembership.objects.filter(
-               user=changer,
-               team = team
-          ).first()
-     
-     if changer_membership is None:
-            raise ValidationError("You are not a member of this team")
-     if changer_membership.role != TeamMembership.Role.OWNER:
-            raise ValidationError("You do not have permission to change member's roles")
-     
-     if role == TeamMembership.Role.OWNER:
-        raise ValidationError(
-            "The owner role cannot be assigned this way."
-        )
-     old_role = membership.role
-     membership.role = role
-     membership.save(update_fields=["role"])
+    membership = TeamMembership.objects.filter(user=member, team=team).first()
 
-     log_activity(
-            actor=changer,
-            action="change_member_role",
-            team=team,
-            project=None,
-            task=None,
-            metadata={"member_id": member.id, "member_username": member.username, "old_role": old_role, "new_role": role},
-        )
+    if membership is None:
+        raise ValidationError("User is not a member of this team")
+    if membership.role == TeamMembership.Role.OWNER:
+        raise ValidationError("Team owner's role cannot be changed")
 
-     return membership
-           
+    changer_membership = TeamMembership.objects.filter(user=changer, team=team).first()
+
+    if changer_membership is None:
+        raise ValidationError("You are not a member of this team")
+    if changer_membership.role != TeamMembership.Role.OWNER:
+        raise ValidationError("You do not have permission to change member's roles")
+
+    if role == TeamMembership.Role.OWNER:
+        raise ValidationError("The owner role cannot be assigned this way.")
+    old_role = membership.role
+    membership.role = role
+    membership.save(update_fields=["role"])
+
+    log_activity(
+        actor=changer,
+        action="change_member_role",
+        team=team,
+        project=None,
+        task=None,
+        metadata={
+            "member_id": member.id,
+            "member_username": member.username,
+            "old_role": old_role,
+            "new_role": role,
+        },
+    )
+
+    return membership
+
+
 @transaction.atomic
 def transfer_team_ownership(*, team, current_owner, new_owner):
     current_membership = TeamMembership.objects.filter(
@@ -301,9 +292,7 @@ def transfer_team_ownership(*, team, current_owner, new_owner):
     ).first()
 
     if new_owner_membership is None:
-        raise ValidationError(
-            "New owner must be a member of the team."
-        )
+        raise ValidationError("New owner must be a member of the team.")
 
     current_membership.role = TeamMembership.Role.ADMIN
     current_membership.save(update_fields=["role"])
@@ -324,6 +313,7 @@ def transfer_team_ownership(*, team, current_owner, new_owner):
     )
 
     return team
+
 
 def check_invitation_create_rate_limit(*, team_id):
     cache_key = f"throttle:invitation:create:team:{team_id}"

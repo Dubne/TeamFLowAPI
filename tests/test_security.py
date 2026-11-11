@@ -5,6 +5,7 @@
 Они описывают поведение, которое должно быть. Цикл: запустить -> увидеть красное ->
 понять причину -> починить код -> увидеть зелёное.
 """
+
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -26,7 +27,7 @@ def test_outsider_cannot_list_task_comments(client_for, team_ctx, task):
 def test_outsider_cannot_list_task_attachments(client_for, team_ctx, task):
     r = client_for(team_ctx.outsider).get(f"/api/tasks/{task.id}/attachments/")
     assert r.status_code in (403, 404)
- 
+
 
 def test_outsider_cannot_list_team_tags(client_for, team_ctx):
     r = client_for(team_ctx.outsider).get(f"/api/teams/{team_ctx.team.id}/tags/")
@@ -72,7 +73,9 @@ def test_viewer_cannot_create_task(client_for, team_ctx):
     assert response.status_code == 400
 
 
-def test_viewer_cannot_change_task_status_even_when_assigned(client_for, team_ctx, task):
+def test_viewer_cannot_change_task_status_even_when_assigned(
+    client_for, team_ctx, task
+):
     task.assignee = team_ctx.viewer
     task.save(update_fields=["assignee"])
 
@@ -133,7 +136,9 @@ def test_commenting_on_unassigned_task_succeeds(client_for, team_ctx, task):
     assert Comment.objects.filter(task=task, text="No assignee yet").exists()
 
 
-def test_comment_detail_route_supports_read_update_and_delete(client_for, team_ctx, task):
+def test_comment_detail_route_supports_read_update_and_delete(
+    client_for, team_ctx, task
+):
     comment = Comment.objects.create(
         task=task,
         user=team_ctx.member,
@@ -143,7 +148,9 @@ def test_comment_detail_route_supports_read_update_and_delete(client_for, team_c
 
     detail_url = f"/api/comments/{comment.id}/"
     assert client.get(detail_url).status_code == 200
-    assert client.patch(detail_url, {"text": "Updated"}, format="json").status_code == 200
+    assert (
+        client.patch(detail_url, {"text": "Updated"}, format="json").status_code == 200
+    )
     assert client.delete(detail_url).status_code == 204
 
 
@@ -167,11 +174,15 @@ def test_task_activity_returns_all_activity_fields(client_for, team_ctx, task):
     response = client_for(team_ctx.member).get(f"/api/tasks/{task.id}/activity/")
 
     assert response.status_code == 200
-    entry = next(item for item in response.data["results"] if item["action"] == "task_created")
+    entry = next(
+        item for item in response.data["results"] if item["action"] == "task_created"
+    )
     assert {"id", "actor", "action", "metadata", "date"} <= entry.keys()
 
 
-def test_invitation_rate_limit_does_not_create_over_limit_invitation(team_ctx, user_factory):
+def test_invitation_rate_limit_does_not_create_over_limit_invitation(
+    team_ctx, user_factory
+):
     for index in range(20):
         invited_user = user_factory(f"invitee{index}")
         invite_user(

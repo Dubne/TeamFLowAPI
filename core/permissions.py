@@ -1,28 +1,32 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import SAFE_METHODS, BasePermission
+
 from apps.teams.models import TeamMembership
-from apps.projects.models import Project
-from apps.tasks.models import Task
 
 
 class IsTeamMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         return _has_team_access(request, obj)
 
+
 class IsProjectTeamMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         return _has_team_access(request, obj.team)
+
 
 class IsTaskTeamMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         return _has_team_access(request, obj.project.team)
 
+
 class IsCommentTeamMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         return _has_team_access(request, obj.task.project.team)
 
+
 class IsTagTeamMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         return _has_team_access(request, obj.team)
+
 
 class IsAttachmentTeamMember(BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -30,14 +34,21 @@ class IsAttachmentTeamMember(BasePermission):
 
 
 def _has_team_access(request, team):
-    membership = TeamMembership.objects.filter(
-        user=request.user,
-        team=team,
-    ).only("role").first()
+    membership = (
+        TeamMembership.objects.filter(
+            user=request.user,
+            team=team,
+        )
+        .only("role")
+        .first()
+    )
     if membership is None:
         return False
-    return request.method in SAFE_METHODS or membership.role != TeamMembership.Role.VIEWER
-    
+    return (
+        request.method in SAFE_METHODS or membership.role != TeamMembership.Role.VIEWER
+    )
+
+
 # def get_team(obj):
 #     team = getattr(obj, "team", None)
 #     if team is None:
@@ -62,4 +73,3 @@ def _has_team_access(request, team):
 # class IsTaskAssignee(BasePermission):
 #     def has_object_permission(self, request, view, obj):
 #         return obj.assignee == request.user
-

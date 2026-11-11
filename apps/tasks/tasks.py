@@ -1,9 +1,10 @@
 from celery import shared_task
 from django.utils import timezone
 
-from .models import Task
 from apps.activity.services import log_activity
 from apps.notifications.tasks import notify_sla_breach
+
+from .models import Task
 
 
 @shared_task

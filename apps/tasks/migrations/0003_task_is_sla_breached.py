@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('tasks', '0002_remove_tag_tasks_task_tags'),
+        ("tasks", "0002_remove_tag_tasks_task_tags"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='task',
-            name='is_sla_breached',
+            model_name="task",
+            name="is_sla_breached",
             field=models.BooleanField(default=False),
         ),
     ]

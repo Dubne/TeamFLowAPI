@@ -1,39 +1,37 @@
-from .models import Project
-from ..teams.models import TeamMembership
 from django.core.exceptions import ValidationError
 from django.db import transaction
+
 from apps.activity.services import log_activity
 
-def create_project(*, creator, name=None, description="", team):
-     
-     membership = TeamMembership.objects.filter(user=creator, team=team).first()
+from ..teams.models import TeamMembership
+from .models import Project
 
-     if membership is None:
-          raise ValidationError("You are not a team member.")
-     if membership.role not in [
-               TeamMembership.Role.OWNER,
-               TeamMembership.Role.ADMIN
-          ]:
-          raise ValidationError("You do not have permission to create project")
-     
-     project = Project.objects.create(
-          name=name,
-          description = description,
-          created_by = creator,
-          team = team
-          )
-     
-     log_activity(
+
+def create_project(*, creator, name=None, description="", team):
+
+    membership = TeamMembership.objects.filter(user=creator, team=team).first()
+
+    if membership is None:
+        raise ValidationError("You are not a team member.")
+    if membership.role not in [TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN]:
+        raise ValidationError("You do not have permission to create project")
+
+    project = Project.objects.create(
+        name=name, description=description, created_by=creator, team=team
+    )
+
+    log_activity(
         actor=creator,
         action="project_created",
         team=team,
         project=project,
         task=None,
         metadata={},
-        )
-     
-     return project
- 
+    )
+
+    return project
+
+
 def update_project(*, project, user, name=None, description=None):
     membership = TeamMembership.objects.filter(
         team=project.team,
@@ -54,7 +52,8 @@ def update_project(*, project, user, name=None, description=None):
 
     project.save()
     return project
-     
+
+
 def change_project_status(*, project, user, status):
     membership = TeamMembership.objects.filter(
         team=project.team,
@@ -62,21 +61,17 @@ def change_project_status(*, project, user, status):
     ).first()
 
     if membership is None:
-        raise ValidationError(
-            "You are not a member of this team."
-        )
+        raise ValidationError("You are not a member of this team.")
 
     if membership.role not in [
-        TeamMembership.Role.OWNER, 
+        TeamMembership.Role.OWNER,
         TeamMembership.Role.ADMIN,
     ]:
-        raise ValidationError(
-            "You do not have permission to change project status."
-        )
+        raise ValidationError("You do not have permission to change project status.")
 
     if status not in Project.Status.values:
         raise ValidationError("Invalid project status.")
-    
+
     old_status = project.status
     project.status = status
     project.save(update_fields=["status"])
@@ -87,31 +82,29 @@ def change_project_status(*, project, user, status):
         team=project.team,
         project=project,
         task=None,
-        metadata={"old_status": old_status, "new_status": status}
-        )
+        metadata={"old_status": old_status, "new_status": status},
+    )
 
     return project
 
+
 @transaction.atomic
 def delete_project(*, deleter, project):
-      
+
     membership = TeamMembership.objects.filter(user=deleter, team=project.team).first()
 
     if membership is None:
-               raise ValidationError("You are not a member of the team.")
-    if membership.role not in [
-                    TeamMembership.Role.OWNER,
-                    TeamMembership.Role.ADMIN
-               ]:
-               raise ValidationError("You do not have permission to delete project")
+        raise ValidationError("You are not a member of the team.")
+    if membership.role not in [TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN]:
+        raise ValidationError("You do not have permission to delete project")
 
     log_activity(
-            actor=deleter,
-            action="project_deleted",
-            team=project.team,
-            project=project,
-            task=None,
-            metadata={}
-            )
-      
+        actor=deleter,
+        action="project_deleted",
+        team=project.team,
+        project=project,
+        task=None,
+        metadata={},
+    )
+
     project.delete()

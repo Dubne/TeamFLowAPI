@@ -1,13 +1,16 @@
 from datetime import timedelta
-from django.utils import timezone
-from .models import Task, Comment, Tag, Attachment
-from ..teams.models import TeamMembership
-from ..projects.models import Project
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from rest_framework.exceptions import Throttled
+
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
+from rest_framework.exceptions import Throttled
+
 from apps.activity.services import log_activity
+
+from ..projects.models import Project
+from ..teams.models import TeamMembership
+from .models import Attachment, Comment, Tag, Task
 
 SLA_BY_PRIORITY = {
     Task.Priority.LOW: timedelta(days=7),
@@ -16,10 +19,11 @@ SLA_BY_PRIORITY = {
     Task.Priority.CRITICAL: timedelta(hours=4),
 }
 
+
 def create_task(*, title, description="", project, creator, priority):
     sla_due_at = timezone.now() + SLA_BY_PRIORITY[priority]
 
-    membership = _get_writable_membership(user=creator, team=project.team)
+    _get_writable_membership(user=creator, team=project.team)
 
     if project.status == Project.Status.ARCHIVED:
         raise ValidationError("You cannot create a task because this project archived")
@@ -30,7 +34,7 @@ def create_task(*, title, description="", project, creator, priority):
         title=title,
         priority=priority,
         description=description,
-        sla_due_at=sla_due_at
+        sla_due_at=sla_due_at,
     )
     log_activity(
         actor=creator,
@@ -42,12 +46,11 @@ def create_task(*, title, description="", project, creator, priority):
     )
     return task
 
+
 def delete_task(*, task, user):
     membership = _get_writable_membership(user=user, team=task.project.team)
     is_creator = task.creator == user
-    is_admin = membership.role in [
-        TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN
-    ]
+    is_admin = membership.role in [TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN]
     if not (is_creator or is_admin):
         raise ValidationError("Only the creator or a team admin can delete this task.")
 
@@ -59,25 +62,25 @@ def delete_task(*, task, user):
         task=task,
         metadata={"deleter_id": user.id},
     )
-    
+
     task.delete()
+
 
 def update_task(*, task, user, title=None, description=None, priority=None):
 
     updater_membership = TeamMembership.objects.filter(
-            team=task.project.team,
-            user=user,
-        ).first()
-    
+        team=task.project.team,
+        user=user,
+    ).first()
+
     if updater_membership is None:
         raise ValidationError("You are not a member of this team.")
-    
+
     if updater_membership.role not in [
         TeamMembership.Role.OWNER,
         TeamMembership.Role.ADMIN,
     ]:
-        raise ValidationError(
-            "Only team owners and admins can update tasks.")
+        raise ValidationError("Only team owners and admins can update tasks.")
 
     if title is not None:
         task.title = title
@@ -90,7 +93,8 @@ def update_task(*, task, user, title=None, description=None, priority=None):
     task.save()
     return task
 
-@transaction.atomic 
+
+@transaction.atomic
 def assign_task(*, task, assigner, assignee):
     assigner_membership = TeamMembership.objects.filter(
         team=task.project.team,
@@ -104,9 +108,7 @@ def assign_task(*, task, assigner, assignee):
         TeamMembership.Role.OWNER,
         TeamMembership.Role.ADMIN,
     ]:
-        raise ValidationError(
-            "Only team owners and admins can assign tasks."
-        )
+        raise ValidationError("Only team owners and admins can assign tasks.")
 
     assignee_membership = TeamMembership.objects.filter(
         team=task.project.team,
@@ -114,9 +116,7 @@ def assign_task(*, task, assigner, assignee):
     ).first()
 
     if assignee_membership is None:
-        raise ValidationError(
-            "Assignee must be a member of the team."
-        )
+        raise ValidationError("Assignee must be a member of the team.")
 
     task.assignee = assignee
     task.save(update_fields=["assignee"])
@@ -132,6 +132,7 @@ def assign_task(*, task, assigner, assignee):
 
     return task
 
+
 @transaction.atomic
 def change_task_status(*, task, user, status):
     membership = _get_writable_membership(user=user, team=task.project.team)
@@ -139,7 +140,9 @@ def change_task_status(*, task, user, status):
     is_assignee = task.assignee_id == user.id
     is_admin = membership.role in [TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN]
     if not (is_assignee or is_admin):
-        raise ValidationError("Only the assignee or a team admin can change the status.")
+        raise ValidationError(
+            "Only the assignee or a team admin can change the status."
+        )
 
     if status not in Task.Status.values:
         raise ValidationError("Invalid task status.")
@@ -149,7 +152,6 @@ def change_task_status(*, task, user, status):
     task.status = status
     task.save(update_fields=["status"])
 
-    
     log_activity(
         actor=user,
         action="task_status_changed",
@@ -160,6 +162,7 @@ def change_task_status(*, task, user, status):
     )
 
     return task
+
 
 def create_comment(*, task, user, text):
     _get_writable_membership(user=user, team=task.project.team)
@@ -176,9 +179,10 @@ def create_comment(*, task, user, text):
         project=task.project,
         task=task,
         metadata={"comment_id": comment.id, "text_preview": comment.text[:100]},
-        )
+    )
 
     return comment
+
 
 def update_comment(*, comment, user, text):
     _get_writable_membership(user=user, team=comment.task.project.team)
@@ -188,17 +192,17 @@ def update_comment(*, comment, user, text):
     comment.save(update_fields=["text"])
     return comment
 
+
 def delete_comment(*, comment, user):
     membership = _get_writable_membership(user=user, team=comment.task.project.team)
     if comment.user == user:
         comment.delete()
         return
 
-    if membership.role not in [
-        TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN
-    ]:
+    if membership.role not in [TeamMembership.Role.OWNER, TeamMembership.Role.ADMIN]:
         raise ValidationError("You do not have permission to delete this comment.")
     comment.delete()
+
 
 def create_tag(*, team, creator, name):
     _get_writable_membership(user=creator, team=team)
@@ -207,7 +211,8 @@ def create_tag(*, team, creator, name):
         raise ValidationError("This tag already exists in the team.")
 
     return Tag.objects.create(team=team, name=name)
- 
+
+
 def add_tag_to_task(*, task, tag, user):
     _get_writable_membership(user=user, team=task.project.team)
 
@@ -234,11 +239,9 @@ def remove_tag_from_task(*, task, tag, user):
     task.tags.remove(tag)
     return task
 
-def delete_tag(*, tag, team,deleter):
-    membership = TeamMembership.objects.filter(
-        user=deleter,
-        team=team
-    ).first()
+
+def delete_tag(*, tag, team, deleter):
+    membership = TeamMembership.objects.filter(user=deleter, team=team).first()
 
     if membership is None:
         raise ValidationError("You are not a member of the team.")
@@ -247,11 +250,10 @@ def delete_tag(*, tag, team,deleter):
         TeamMembership.Role.OWNER,
         TeamMembership.Role.ADMIN,
     ):
-        raise ValidationError(
-            "You do not have permission to delete tag."
-        )
+        raise ValidationError("You do not have permission to delete tag.")
 
     tag.delete()
+
 
 def upload_attachment(*, task, file, uploaded_by):
     _get_writable_membership(user=uploaded_by, team=task.project.team)
@@ -264,6 +266,7 @@ def upload_attachment(*, task, file, uploaded_by):
         size=file.size,
         content_type=file.content_type,
     )
+
 
 def delete_attachment(*, attachment, user):
     membership = _get_writable_membership(user=user, team=attachment.task.project.team)
@@ -280,7 +283,7 @@ def delete_attachment(*, attachment, user):
         raise ValidationError("You do not have permission to delete this attachment.")
 
     attachment.file.delete(save=False)
-    attachment.delete() 
+    attachment.delete()
 
 
 def _get_writable_membership(*, user, team):
@@ -290,6 +293,7 @@ def _get_writable_membership(*, user, team):
     if membership.role == TeamMembership.Role.VIEWER:
         raise ValidationError("Viewers have read-only access.")
     return membership
+
 
 def check_task_creation_rate_limit(*, user_id):
     cache_key = f"throttle:task:create:user:{user_id}"

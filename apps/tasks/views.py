@@ -1,27 +1,67 @@
-from rest_framework import viewsets, status, generics
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
-
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter, OrderingFilter
-from .filters import TaskFilter
-
 from django.core.cache import cache
-from apps.notifications.tasks import send_task_assigned_notification, send_comment_notification
-from apps.teams.models import TeamMembership, Team
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from apps.notifications.tasks import (
+    send_comment_notification,
+    send_task_assigned_notification,
+)
+from apps.teams.models import Team, TeamMembership
+from core.permissions import (
+    IsAttachmentTeamMember,
+    IsCommentTeamMember,
+    IsProjectTeamMember,
+    IsTagTeamMember,
+    IsTaskTeamMember,
+)
+
 from ..projects.models import Project
-from core.permissions import IsTaskTeamMember, IsCommentTeamMember, IsTagTeamMember, IsAttachmentTeamMember, IsProjectTeamMember
-from .models import Task, Comment, Tag, Attachment
-from .serializers import TaskAssignSerializer, TaskChangeStatusSerializer, TaskCreateSerializer, \
-                                TaskDetailSerializer, TaskListSerializer, TaskUpdatedSerializer, CommentCreateUpdateSerializer, CommentSerializer, \
-                                AttachmentSerializer, AttachmentUploadSerializer, TagSerializer
-                                
-from .services import create_task, assign_task, delete_task, change_task_status, update_task, create_comment, \
-                update_comment, delete_comment, delete_tag, delete_attachment, add_tag_to_task, create_tag, remove_tag_from_task, check_task_creation_rate_limit, upload_attachment
-from .selectors import get_project_tasks, get_user_visible_tasks, get_task_attachments, get_task_comments, get_team_tags
+from .filters import TaskFilter
+from .models import Attachment, Comment, Tag, Task
+from .selectors import (
+    get_project_tasks,
+    get_task_attachments,
+    get_task_comments,
+    get_team_tags,
+    get_user_visible_tasks,
+)
+from .serializers import (
+    AttachmentSerializer,
+    AttachmentUploadSerializer,
+    CommentCreateUpdateSerializer,
+    CommentSerializer,
+    TagSerializer,
+    TaskAssignSerializer,
+    TaskChangeStatusSerializer,
+    TaskCreateSerializer,
+    TaskDetailSerializer,
+    TaskListSerializer,
+    TaskUpdatedSerializer,
+)
+from .services import (
+    add_tag_to_task,
+    assign_task,
+    change_task_status,
+    check_task_creation_rate_limit,
+    create_comment,
+    create_tag,
+    create_task,
+    delete_attachment,
+    delete_comment,
+    delete_tag,
+    delete_task,
+    remove_tag_from_task,
+    update_comment,
+    update_task,
+    upload_attachment,
+)
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -31,25 +71,19 @@ class TaskViewSet(viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_permissions(self):
-         if self.action == "create":
+        if self.action == "create":
             return [IsAuthenticated()]
 
-         if self.action == "by_project":
-            return [
-                IsAuthenticated(),
-                IsProjectTeamMember()
-                ]   
+        if self.action == "by_project":
+            return [IsAuthenticated(), IsProjectTeamMember()]
 
-         return [
-                IsAuthenticated(),
-                IsTaskTeamMember()
-                ]       
-    
+        return [IsAuthenticated(), IsTaskTeamMember()]
+
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Task.objects.none()
         return get_user_visible_tasks(user=self.request.user)
-    
+
     def get_serializer_class(self):
         if self.action == "list":
             return TaskListSerializer
@@ -74,7 +108,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        updated_task = update_task(task=task, user=request.user, **serializer.validated_data)
+        updated_task = update_task(
+            task=task, user=request.user, **serializer.validated_data
+        )
         return Response(TaskDetailSerializer(updated_task).data)
 
     def destroy(self, request, *args, **kwargs):
@@ -87,19 +123,22 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
         serializer = TaskChangeStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        updated_task = change_task_status(task=task, user=request.user, status=serializer.validated_data["status"])
+        updated_task = change_task_status(
+            task=task, user=request.user, status=serializer.validated_data["status"]
+        )
         return Response(TaskDetailSerializer(updated_task).data)
 
-    @extend_schema(
-        request=TaskAssignSerializer,
-        responses=TaskDetailSerializer
-    )
+    @extend_schema(request=TaskAssignSerializer, responses=TaskDetailSerializer)
     @action(detail=True, methods=["patch"], url_path="assign")
     def assign_task(self, request, pk=None):
         task = self.get_object()
         serializer = TaskAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        updated_task = assign_task(task=task, assigner=request.user, assignee=serializer.validated_data["assignee"])
+        updated_task = assign_task(
+            task=task,
+            assigner=request.user,
+            assignee=serializer.validated_data["assignee"],
+        )
         assignee = serializer.validated_data["assignee"]
         send_task_assigned_notification.delay(assignee.id, task.title)
         return Response(TaskDetailSerializer(updated_task).data)
@@ -107,29 +146,26 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="by-project/(?P<project_id>[^/.]+)")
     def by_project(self, request, project_id=None):
         project = get_object_or_404(Project, pk=project_id)
-        self.check_object_permissions(request, project)  
+        self.check_object_permissions(request, project)
         tasks = get_project_tasks(project=project)
         serializer = TaskListSerializer(tasks, many=True)
         return Response(serializer.data)
+
 
 class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if "task_pk" not in self.kwargs:
             return Comment.objects.select_related("task__project__team", "user")
 
-        task = get_object_or_404(
-            Task,
-            pk=self.kwargs["task_pk"]
-        )
+        task = get_object_or_404(Task, pk=self.kwargs["task_pk"])
 
         if not TeamMembership.objects.filter(
-            user=self.request.user,
-            team=task.project.team
+            user=self.request.user, team=task.project.team
         ).exists():
             self.permission_denied(self.request)
 
         return get_task_comments(task=task)
-    
+
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
             return CommentCreateUpdateSerializer
@@ -139,17 +175,23 @@ class CommentViewSet(viewsets.ModelViewSet):
         if self.action == "create":
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsCommentTeamMember()]
-    
+
     def check_task_permission(self, request, task):
-        if not TeamMembership.objects.filter(user=request.user, team=task.project.team).exists():
-            self.permission_denied(request, message="You are not a member of this team.")
+        if not TeamMembership.objects.filter(
+            user=request.user, team=task.project.team
+        ).exists():
+            self.permission_denied(
+                request, message="You are not a member of this team."
+            )
 
     def create(self, request, *args, **kwargs):
         task = get_object_or_404(Task, pk=self.kwargs["task_pk"])
         self.check_task_permission(request, task)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        comment = create_comment(task=task, user=request.user, **serializer.validated_data)
+        comment = create_comment(
+            task=task, user=request.user, **serializer.validated_data
+        )
         if task.assignee_id is not None and task.assignee_id != request.user.id:
             send_comment_notification.delay(task.assignee.id, comment.text)
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
@@ -158,7 +200,9 @@ class CommentViewSet(viewsets.ModelViewSet):
         comment = self.get_object()
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        updated = update_comment(comment=comment, user=request.user, **serializer.validated_data)
+        updated = update_comment(
+            comment=comment, user=request.user, **serializer.validated_data
+        )
         return Response(CommentSerializer(updated).data)
 
     def destroy(self, request, *args, **kwargs):
@@ -166,21 +210,20 @@ class CommentViewSet(viewsets.ModelViewSet):
         delete_comment(comment=comment, user=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class AttachmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAttachmentTeamMember]
 
     def get_queryset(self):
         if "task_pk" not in self.kwargs:
-            return Attachment.objects.select_related("task__project__team", "uploaded_by")
+            return Attachment.objects.select_related(
+                "task__project__team", "uploaded_by"
+            )
 
-        task = get_object_or_404(
-            Task,
-            pk=self.kwargs["task_pk"]
-        )
+        task = get_object_or_404(Task, pk=self.kwargs["task_pk"])
 
         if not TeamMembership.objects.filter(
-            user=self.request.user,
-            team=task.project.team
+            user=self.request.user, team=task.project.team
         ).exists():
             self.permission_denied(self.request)
 
@@ -193,19 +236,26 @@ class AttachmentViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         task = get_object_or_404(Task, pk=self.kwargs["task_pk"])
-        if not TeamMembership.objects.filter(user=request.user, team=task.project.team).exists():
-            self.permission_denied(request, message="You are not a member of this team.")
+        if not TeamMembership.objects.filter(
+            user=request.user, team=task.project.team
+        ).exists():
+            self.permission_denied(
+                request, message="You are not a member of this team."
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         attachment = upload_attachment(
             task=task, file=serializer.validated_data["file"], uploaded_by=request.user
         )
-        return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+        return Response(
+            AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED
+        )
 
     def destroy(self, request, *args, **kwargs):
         attachment = self.get_object()
         delete_attachment(attachment=attachment, user=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class TagViewSet(viewsets.ModelViewSet):
     serializer_class = TagSerializer
@@ -227,13 +277,9 @@ class TagViewSet(viewsets.ModelViewSet):
             return super().list(request, *args, **kwargs)
         team = get_object_or_404(Team, pk=self.kwargs["team_pk"])
 
-        if not TeamMembership.objects.filter(
-            user=request.user,
-            team=team
-        ).exists():
+        if not TeamMembership.objects.filter(user=request.user, team=team).exists():
             self.permission_denied(
-                request,
-                message="You are not a member of this team."
+                request, message="You are not a member of this team."
             )
 
         team_pk = self.kwargs["team_pk"]
@@ -253,7 +299,9 @@ class TagViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         team = get_object_or_404(Team, pk=self.kwargs["team_pk"])
         if not TeamMembership.objects.filter(user=request.user, team=team).exists():
-            self.permission_denied(request, message="You are not a member of this team.")
+            self.permission_denied(
+                request, message="You are not a member of this team."
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         tag = create_tag(team=team, creator=request.user, **serializer.validated_data)
@@ -264,21 +312,17 @@ class TagViewSet(viewsets.ModelViewSet):
         delete_tag(tag=tag, team=tag.team, deleter=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class TaskTagViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, IsTaskTeamMember]
 
-    @extend_schema(
-    responses=TagSerializer(many=True)
-    )
+    @extend_schema(responses=TagSerializer(many=True))
     def list(self, request, task_pk=None):
         task = get_object_or_404(Task, pk=task_pk)
         self.check_object_permissions(request, task)
         return Response(TagSerializer(task.tags.all(), many=True).data)
 
-    @extend_schema(
-    request=None,
-    responses=TagSerializer(many=True)
-    )
+    @extend_schema(request=None, responses=TagSerializer(many=True))
     def create(self, request, task_pk=None):
         task = get_object_or_404(Task, pk=task_pk)
         self.check_object_permissions(request, task)
@@ -286,10 +330,7 @@ class TaskTagViewSet(viewsets.ViewSet):
         add_tag_to_task(task=task, tag=tag, user=request.user)
         return Response(TagSerializer(task.tags.all(), many=True).data)
 
-    @extend_schema(
-    request=None,
-    responses={204: None}
-    )
+    @extend_schema(request=None, responses={204: None})
     def destroy(self, request, task_pk=None, pk=None):
         task = get_object_or_404(Task, pk=task_pk)
         self.check_object_permissions(request, task)

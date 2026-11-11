@@ -1,23 +1,28 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter, OrderingFilter
 from django.core.cache import cache
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from core.permissions import IsProjectTeamMember
+
 from .models import Project
-from .serializers import (
-    ProjectSerializer,
-    ProjectCreateUpdateSerializer,
-    ProjectUpdateSerializer,
-    ChangeStatusSerializer,
-)
-from .services import create_project, update_project, delete_project, change_project_status
 from .selectors import get_project_statistic, get_user_visible_projects
- 
+from .serializers import (
+    ChangeStatusSerializer,
+    ProjectCreateUpdateSerializer,
+    ProjectSerializer,
+    ProjectUpdateSerializer,
+)
+from .services import (
+    change_project_status,
+    create_project,
+    delete_project,
+    update_project,
+)
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ["name", "description"]
@@ -26,7 +31,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [IsAuthenticated()] 
+            return [IsAuthenticated()]
         return [IsAuthenticated(), IsProjectTeamMember()]
 
     def get_queryset(self):
@@ -52,9 +57,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_project = update_project(
-            project=project,
-            user=request.user,
-            **serializer.validated_data
+            project=project, user=request.user, **serializer.validated_data
         )
         return Response(ProjectSerializer(updated_project).data)
 
@@ -68,7 +71,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
         project = self.get_object()
         serializer = ChangeStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        updated_project = change_project_status(project=project, user=request.user, status=serializer.validated_data["status"])
+        updated_project = change_project_status(
+            project=project,
+            user=request.user,
+            status=serializer.validated_data["status"],
+        )
         return Response(ProjectSerializer(updated_project).data)
 
     @action(detail=True, methods=["get"], url_path="statistic")

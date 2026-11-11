@@ -1,9 +1,16 @@
 import django_filters
-from .models import Task, Tag, Attachment
+
+from .models import Task
+
 
 class TaskFilter(django_filters.FilterSet):
-    deadline_before = django_filters.DateTimeFilter(field_name="sla_due_at", lookup_expr="lte")
-    deadline_after = django_filters.DateTimeFilter(field_name="sla_due_at", lookup_expr="gte")
+    deadline_before = django_filters.DateTimeFilter(
+        field_name="sla_due_at", lookup_expr="lte"
+    )
+    deadline_after = django_filters.DateTimeFilter(
+        field_name="sla_due_at", lookup_expr="gte"
+    )
+
     class Meta:
         model = Task
         fields = {

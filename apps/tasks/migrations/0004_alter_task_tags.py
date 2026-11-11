@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('tasks', '0003_task_is_sla_breached'),
+        ("tasks", "0003_task_is_sla_breached"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='task',
-            name='tags',
-            field=models.ManyToManyField(blank=True, related_name='tasks', to='tasks.tag'),
+            model_name="task",
+            name="tags",
+            field=models.ManyToManyField(
+                blank=True, related_name="tasks", to="tasks.tag"
+            ),
         ),
     ]

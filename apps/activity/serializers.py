@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from .models import ActivityLog
 from ..users.serializers import UserShortSerializer
+from .models import ActivityLog
 
 
 class ActivityLogSerializer(serializers.ModelSerializer):

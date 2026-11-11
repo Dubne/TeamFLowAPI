@@ -15,15 +15,19 @@ User = get_user_model()
 
 @pytest.fixture(autouse=True)
 def _isolated_infrastructure(settings, tmp_path):
-    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    settings.CACHES = {
+        "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+    }
     settings.MEDIA_ROOT = tmp_path
 
     from django.core.cache import cache
-    cache.clear() 
+
+    cache.clear()
 
     from TeamFlowAPI.celery import app
-    app.conf.task_always_eager = True     
-    app.conf.task_eager_propagates = True 
+
+    app.conf.task_always_eager = True
+    app.conf.task_eager_propagates = True
 
 
 @pytest.fixture
@@ -63,7 +67,8 @@ def client_for():
 @pytest.fixture
 def team_ctx(user_factory):
     owner, admin, member, viewer, outsider = (
-        user_factory(name) for name in ("owner", "admin", "member", "viewer", "outsider")
+        user_factory(name)
+        for name in ("owner", "admin", "member", "viewer", "outsider")
     )
     team = create_team(owner=owner, name="Backend", description="Backend team")
     for user, role in (
@@ -74,14 +79,22 @@ def team_ctx(user_factory):
         TeamMembership.objects.create(user=user, team=team, role=role)
     project = create_project(creator=owner, name="API", description="", team=team)
     return SimpleNamespace(
-        owner=owner, admin=admin, member=member, viewer=viewer,
-        outsider=outsider, team=team, project=project,
+        owner=owner,
+        admin=admin,
+        member=member,
+        viewer=viewer,
+        outsider=outsider,
+        team=team,
+        project=project,
     )
 
 
 @pytest.fixture
 def task(team_ctx):
     return create_task(
-        title="Fix bug", description="details", project=team_ctx.project,
-        creator=team_ctx.member, priority=Task.Priority.HIGH,
+        title="Fix bug",
+        description="details",
+        project=team_ctx.project,
+        creator=team_ctx.member,
+        priority=Task.Priority.HIGH,
     )

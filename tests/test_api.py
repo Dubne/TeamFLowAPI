@@ -16,7 +16,9 @@ def test_register_login_and_me(anon_client, password):
     assert r.status_code == 201, r.data
 
     r = anon_client.post(
-        "/api/auth/jwt/create/", {"username": "alex", "password": password}, format="json"
+        "/api/auth/jwt/create/",
+        {"username": "alex", "password": password},
+        format="json",
     )
     assert r.status_code == 200
     anon_client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
@@ -33,7 +35,12 @@ def test_task_list_requires_authentication(anon_client):
 def test_member_creates_task(client_for, team_ctx):
     r = client_for(team_ctx.member).post(
         "/api/tasks/",
-        {"title": "New", "description": "d", "project": team_ctx.project.id, "priority": "HIGH"},
+        {
+            "title": "New",
+            "description": "d",
+            "project": team_ctx.project.id,
+            "priority": "HIGH",
+        },
         format="json",
     )
 
@@ -50,10 +57,14 @@ def test_outsider_does_not_see_foreign_task(client_for, team_ctx, task):
 
 def test_list_is_paginated_and_filterable_by_status(client_for, team_ctx, task):
     in_progress = create_task(
-        title="Second", project=team_ctx.project, creator=team_ctx.member,
+        title="Second",
+        project=team_ctx.project,
+        creator=team_ctx.member,
         priority=Task.Priority.LOW,
     )
-    change_task_status(task=in_progress, user=team_ctx.admin, status=Task.Status.IN_PROGRESS)
+    change_task_status(
+        task=in_progress, user=team_ctx.admin, status=Task.Status.IN_PROGRESS
+    )
 
     r = client_for(team_ctx.member).get("/api/tasks/", {"status": "IN_PROGRESS"})
 
@@ -74,7 +85,12 @@ def test_assigning_task_sends_email(client_for, team_ctx, task, mailoutbox):
 
 def test_task_creation_is_rate_limited(client_for, team_ctx):
     client = client_for(team_ctx.member)
-    payload = {"title": "t", "description": "d", "project": team_ctx.project.id, "priority": "LOW"}
+    payload = {
+        "title": "t",
+        "description": "d",
+        "project": team_ctx.project.id,
+        "priority": "LOW",
+    }
 
     for _ in range(20):
         assert client.post("/api/tasks/", payload, format="json").status_code == 201

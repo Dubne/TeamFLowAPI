@@ -1,4 +1,3 @@
-
 from datetime import timedelta
 
 import pytest
@@ -22,7 +21,10 @@ def test_create_team_makes_creator_owner(user_factory):
 
     team = create_team(owner=user, name="Alpha", description="")
 
-    assert TeamMembership.objects.get(team=team, user=user).role == TeamMembership.Role.OWNER
+    assert (
+        TeamMembership.objects.get(team=team, user=user).role
+        == TeamMembership.Role.OWNER
+    )
     assert ActivityLog.objects.filter(team=team, action="team_created").exists()
 
 
@@ -36,7 +38,9 @@ def test_plain_member_cannot_invite(team_ctx, user_factory):
 def test_admin_can_invite_and_invitation_lives_7_days(team_ctx, user_factory):
     newcomer = user_factory("newcomer")
 
-    invitation = invite_user(inviter=team_ctx.admin, invited_user=newcomer, team=team_ctx.team)
+    invitation = invite_user(
+        inviter=team_ctx.admin, invited_user=newcomer, team=team_ctx.team
+    )
 
     assert invitation.status == Invitation.Status.PENDING
     lifetime = invitation.expired_at - timezone.now()
@@ -45,7 +49,9 @@ def test_admin_can_invite_and_invitation_lives_7_days(team_ctx, user_factory):
 
 def test_accept_invitation_creates_membership(team_ctx, user_factory):
     newcomer = user_factory("newcomer")
-    invitation = invite_user(inviter=team_ctx.owner, invited_user=newcomer, team=team_ctx.team)
+    invitation = invite_user(
+        inviter=team_ctx.owner, invited_user=newcomer, team=team_ctx.team
+    )
 
     membership = accept_invitation(invitation=invitation, user=newcomer)
 
@@ -57,7 +63,9 @@ def test_accept_invitation_creates_membership(team_ctx, user_factory):
 
 def test_cannot_accept_someone_elses_invitation(team_ctx, user_factory):
     newcomer = user_factory("newcomer")
-    invitation = invite_user(inviter=team_ctx.owner, invited_user=newcomer, team=team_ctx.team)
+    invitation = invite_user(
+        inviter=team_ctx.owner, invited_user=newcomer, team=team_ctx.team
+    )
 
     with pytest.raises(ValidationError):
         accept_invitation(invitation=invitation, user=team_ctx.outsider)
@@ -70,7 +78,9 @@ def test_transfer_ownership_swaps_roles(team_ctx):
 
     team_ctx.team.refresh_from_db()
     roles = dict(
-        TeamMembership.objects.filter(team=team_ctx.team).values_list("user__username", "role")
+        TeamMembership.objects.filter(team=team_ctx.team).values_list(
+            "user__username", "role"
+        )
     )
     assert roles["admin"] == "OWNER"
     assert roles["owner"] == "ADMIN"

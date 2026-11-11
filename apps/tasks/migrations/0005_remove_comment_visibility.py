@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('tasks', '0004_alter_task_tags'),
+        ("tasks", "0004_alter_task_tags"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='comment',
-            name='visibility',
+            model_name="comment",
+            name="visibility",
         ),
     ]
