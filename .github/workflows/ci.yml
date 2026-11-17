@@ -167,6 +167,45 @@ jobs:
             ${{ env.IMAGE }}:main
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  deploy:
+    name: deploy
+    needs: publish-image                    
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production                 
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false             
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:                                
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Copy production compose-file 
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: scp docker-compose.prod.yml "$SSH_USER@$SSH_HOST:/opt/teamflow/docker-compose.prod.yml"
+
+      - name: Deploy
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: ssh "$SSH_USER@$SSH_HOST" "bash -s -- ${GITHUB_SHA}" < deploy/remote-deploy.sh
+
+      - name: Check site from outside
+        env:
+          APP_URL: ${{ vars.APP_URL }}      
+        run: curl -fsS --retry 5 --retry-delay 5 "$APP_URL/admin/login/" > /dev/null
 
 
 
