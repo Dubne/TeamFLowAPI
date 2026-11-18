@@ -170,7 +170,7 @@ jobs:
   deploy:
     name: deploy
     needs: publish-image                    
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && false
     runs-on: ubuntu-latest
     environment: production                 
     concurrency:
